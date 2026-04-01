@@ -1,0 +1,6 @@
+services:
+  css:
+    image: solidproject/community-server:latest
+    command: ["-b", "http://localhost:3000"]
+    ports:
+      - "3000:3000"
