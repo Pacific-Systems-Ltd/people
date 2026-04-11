@@ -127,7 +127,6 @@ class Pod:
 
         headers: dict[str, str] = {
             "Content-Type": "text/turtle",
-            "If-None-Match": "*",
         }
         if slug:
             headers["Slug"] = slug
