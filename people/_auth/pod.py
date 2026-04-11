@@ -14,6 +14,7 @@ from people._graph.triple import URI
 from people._http.errors import raise_for_status
 from people._http.headers import extract_metadata
 from people._rdf.namespaces import ACL, LDP, RDF
+from people._rdf.parse import parse_rdf
 
 if TYPE_CHECKING:
     from people._http.client import AuthenticatedClient
@@ -50,12 +51,14 @@ class Pod:
         """GET — read a resource and return a Graph."""
         url = self._resolve(path)
         resp = await self._client.request(
-            "GET", url, headers={"Accept": "text/turtle"}
+            "GET", url, headers={"Accept": "text/turtle, application/ld+json;q=0.9"}
         )
         raise_for_status(resp.status_code, url, resp.text)
 
         metadata = extract_metadata(dict(resp.headers), url)
-        graph = Graph.from_turtle(resp.text, base_uri=url)
+        content_type = metadata.get("content_type", "text/turtle")
+        triples = parse_rdf(resp.text, content_type, base_uri=url)
+        graph = Graph(triples)
         graph.url = url
         graph.etag = metadata["etag"]
         graph.acl_url = metadata["acl_url"]
@@ -67,9 +70,11 @@ class Pod:
         url = self._resolve(path)
         turtle = graph.to_turtle(base_uri=url)
 
-        headers = {"Content-Type": "text/turtle"}
+        headers: dict[str, str] = {"Content-Type": "text/turtle"}
         if graph.etag:
             headers["If-Match"] = graph.etag
+        else:
+            headers["If-None-Match"] = "*"
 
         resp = await self._client.request("PUT", url, content=turtle, headers=headers)
         raise_for_status(resp.status_code, url, resp.text)
@@ -99,14 +104,35 @@ class Pod:
         raise_for_status(resp.status_code, url, resp.text)
         graph.reset_snapshot()
 
-    async def create(self, container_path: str, graph: Graph, slug: str | None = None) -> str:
-        """POST — create a new resource in a container. Returns the created URL."""
+    async def create(
+        self,
+        container_path: str,
+        graph: Graph,
+        slug: str | None = None,
+        *,
+        container: bool = True,
+    ) -> str:
+        """POST — create a new resource (or container) inside a parent container.
+
+        Args:
+            container_path: Path of the parent container to POST into.
+            graph: RDF graph describing the new resource.
+            slug: Suggested name for the created resource.
+            container: If True, create an LDP BasicContainer (adds Link header).
+
+        Returns the URL of the created resource.
+        """
         url = self._resolve(container_path)
         turtle = graph.to_turtle()
 
-        headers: dict[str, str] = {"Content-Type": "text/turtle"}
+        headers: dict[str, str] = {
+            "Content-Type": "text/turtle",
+            "If-None-Match": "*",
+        }
         if slug:
             headers["Slug"] = slug
+        if container:
+            headers["Link"] = '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"'
 
         resp = await self._client.request("POST", url, content=turtle, headers=headers)
         raise_for_status(resp.status_code, url, resp.text)
@@ -126,13 +152,36 @@ class Pod:
         """GET — list resources in a container. Returns URLs."""
         url = self._resolve(container_path)
         resp = await self._client.request(
-            "GET", url, headers={"Accept": "text/turtle"}
+            "GET", url, headers={"Accept": "text/turtle, application/ld+json;q=0.9"}
         )
         raise_for_status(resp.status_code, url, resp.text)
 
-        graph = Graph.from_turtle(resp.text, base_uri=url)
+        metadata = extract_metadata(dict(resp.headers), url)
+        content_type = metadata.get("content_type", "text/turtle")
+        triples = parse_rdf(resp.text, content_type, base_uri=url)
+        graph = Graph(triples)
         contains = graph.query(predicate=LDP.contains)
         return [str(t.object) for t in contains]
+
+    async def _require_wac(self, path: str) -> Graph:
+        """Read a resource and verify the server uses WAC, not ACP (SP-23).
+
+        Raises AuthSchemeError if the server uses ACP.
+        Raises ValueError if no ACL URL is found.
+        Returns the resource graph with ACL metadata attached.
+        """
+        from people._acl.acp import AuthSchemeError, detect_auth_scheme
+
+        resource_graph = await self.read(path)
+        link_headers = {}
+        if resource_graph.acl_url:
+            link_headers["acl"] = resource_graph.acl_url
+        scheme = detect_auth_scheme(link_headers)
+        if scheme == "acp":
+            raise AuthSchemeError(self._resolve(path))
+        if not resource_graph.acl_url:
+            raise ValueError(f"No ACL URL found for {self._resolve(path)}")
+        return resource_graph
 
     async def grant(
         self,
@@ -145,10 +194,8 @@ class Pod:
         """Grant access to a resource. Reads .acl, adds grant, writes back."""
         resource_url = self._resolve(path)
 
-        # Discover ACL URL via Link header (spec: MUST NOT derive via string manipulation)
-        resource_graph = await self.read(path)
-        if not resource_graph.acl_url:
-            raise ValueError(f"No ACL URL found for {resource_url}")
+        # Discover ACL URL and verify WAC (SP-23)
+        resource_graph = await self._require_wac(path)
 
         # Read or create the ACL (only catch 404 — any other error must propagate)
         from people._http.errors import NotFoundError
@@ -176,9 +223,7 @@ class Pod:
 
     async def revoke(self, path: str, *, agent: str) -> None:
         """Revoke all access for an agent on a resource."""
-        resource_graph = await self.read(path)
-        if not resource_graph.acl_url:
-            raise ValueError(f"No ACL URL found for {self._resolve(path)}")
+        resource_graph = await self._require_wac(path)
 
         acl_graph = await self.read(resource_graph.acl_url)
 
@@ -195,9 +240,7 @@ class Pod:
 
     async def grants(self, path: str) -> list[dict]:
         """List all grants on a resource. Returns list of {agent, modes, resource}."""
-        resource_graph = await self.read(path)
-        if not resource_graph.acl_url:
-            return []
+        resource_graph = await self._require_wac(path)
 
         acl_graph = await self.read(resource_graph.acl_url)
 
@@ -216,6 +259,21 @@ class Pod:
                 results.append({"agent": a, "modes": modes})
 
         return results
+
+    async def discover_inbox(self, path: str) -> str | None:
+        """Discover the LDN Inbox for a resource."""
+        from people._ldn.inbox import discover_inbox
+        return await discover_inbox(self._resolve(path), self._client)
+
+    async def send_notification(self, inbox_path: str, notification: Graph) -> str:
+        """Send a notification to an LDN Inbox. Returns the created URL."""
+        from people._ldn.inbox import send_notification
+        return await send_notification(self._resolve(inbox_path), notification, self._client)
+
+    async def list_notifications(self, inbox_path: str) -> list[str]:
+        """List notification URLs in an LDN Inbox."""
+        from people._ldn.inbox import list_notifications
+        return await list_notifications(self._resolve(inbox_path), self._client)
 
     def __repr__(self) -> str:
         return f"Pod({self._base_url!r})"
