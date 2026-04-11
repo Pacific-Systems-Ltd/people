@@ -1,6 +1,8 @@
 """Tests for Graph — the core data primitive."""
 
-from people import URI, Literal, Triple, Graph, SCHEMA, FOAF, RDF
+import pytest
+
+from people import FOAF, RDF, SCHEMA, URI, Graph, Literal, Triple
 
 
 def _alice_graph() -> Graph:
@@ -143,11 +145,8 @@ class TestGraphSnapshot:
 
     def test_diff_without_snapshot_raises(self):
         g = _alice_graph()
-        try:
+        with pytest.raises(ValueError):
             g.diff()
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_reset_snapshot(self):
         g = _alice_graph()

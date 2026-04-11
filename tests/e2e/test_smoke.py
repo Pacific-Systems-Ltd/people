@@ -9,12 +9,14 @@ Run:
     pytest tests/e2e/ -v
 """
 
-import asyncio
 import uuid
 
+import httpx
 import pytest
+
 import people as ps
-from people import URI, Literal, Graph, SCHEMA, FOAF, RDF
+from people import RDF, SCHEMA, URI, Graph, Literal
+from people._http.errors import SolidError
 from people._rdf.patch import build_n3_patch
 
 
@@ -62,7 +64,7 @@ class TestAuth:
     @pytest.mark.asyncio
     async def test_invalid_credentials_fail(self, css_base):
         """Bad credentials must fail, not silently succeed."""
-        with pytest.raises(Exception):
+        with pytest.raises((httpx.HTTPStatusError, SolidError)):
             await ps.login(
                 issuer=css_base,
                 client_id="nonexistent-id",
@@ -112,7 +114,6 @@ class TestCRUD:
     async def test_write_and_read_resource(self, pod):
         """PUT a resource, read it back, verify full replacement."""
         slug = _unique_slug()
-        url_path = slug
 
         g = Graph()
         subject = URI(f"http://example.org/{slug}")
@@ -331,8 +332,7 @@ class TestConflict:
         url = await pod.create("", g, slug=slug)
 
         # Read to get the real ETag
-        graph = await pod.read(url)
-        real_etag = graph.etag
+        await pod.read(url)
 
         # Write with a fake ETag
         g2 = Graph()

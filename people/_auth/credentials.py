@@ -33,6 +33,9 @@ async def exchange_client_credentials(
     Raises:
         httpx.HTTPStatusError: If the token exchange fails after retry.
     """
+    from people._http.tls import enforce_tls
+    enforce_tls(token_endpoint)
+
     auth_string = (
         f"{urllib.parse.quote(client_id, safe='')}:"
         f"{urllib.parse.quote(client_secret, safe='')}"

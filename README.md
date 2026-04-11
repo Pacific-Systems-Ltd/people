@@ -67,7 +67,7 @@ Solid is the core of [Pacific's](https://gopacific.ai) organisational intelligen
 people requires [Python](https://www.python.org/downloads/) 3.11 or higher.
 
 ```bash
-pip install people
+pip install pacific-solid
 ```
 
 ### Dependencies
@@ -243,8 +243,8 @@ print(profile.storages)  # ["https://pods.example/alice/"]
 
 ```python
 graph.to_dict()                         # always available
-graph.to_dataframe()                    # pip install people[pandas]
-graph.to_networkx()                     # pip install people[science]
+graph.to_dataframe()                    # pip install pacific-solid[pandas]
+graph.to_networkx()                     # pip install pacific-solid[science]
 ```
 
 ### Debug logging

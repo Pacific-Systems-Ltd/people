@@ -1,6 +1,6 @@
 """Tests for namespace constants."""
 
-from people import SCHEMA, FOAF, ACL, RDF, Namespace, URI
+from people import ACL, FOAF, RDF, SCHEMA, URI, Namespace
 
 
 class TestNamespace:
@@ -20,8 +20,8 @@ class TestNamespace:
         assert RDF.type == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
     def test_custom_namespace(self):
-        PAC = Namespace("http://pacific.dev/ontology#")
-        assert PAC.Interview == "http://pacific.dev/ontology#Interview"
+        pac = Namespace("http://pacific.dev/ontology#")
+        assert pac.Interview == "http://pacific.dev/ontology#Interview"
 
     def test_repr(self):
         assert "schema.org" in repr(SCHEMA)

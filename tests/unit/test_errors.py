@@ -1,14 +1,15 @@
 """Tests for the Solid error hierarchy."""
 
 import pytest
+
 from people import (
-    SolidError,
-    AuthenticationError,
     AccessDeniedError,
-    NotFoundError,
+    AuthenticationError,
     ConflictError,
-    PreconditionFailedError,
+    NotFoundError,
     PatchError,
+    PreconditionFailedError,
+    SolidError,
 )
 from people._http.errors import raise_for_status
 

@@ -9,6 +9,9 @@ from typing import Any
 def parse_link_headers(header_value: str) -> dict[str, str]:
     """Parse HTTP Link headers into a dict keyed by rel value.
 
+    Returns the first URI for each rel value. For multi-valued rels
+    (e.g. multiple rel="type" links), use parse_link_headers_multi().
+
     Example:
         '<.acl>; rel="acl"' -> {"acl": ".acl"}
     """
@@ -21,7 +24,32 @@ def parse_link_headers(header_value: str) -> dict[str, str]:
         match = re.match(r'<([^>]+)>\s*;\s*rel="([^"]+)"', part)
         if match:
             uri, rel = match.groups()
-            result[rel] = uri
+            if rel not in result:
+                result[rel] = uri
+
+    return result
+
+
+def parse_link_headers_multi(header_value: str) -> dict[str, list[str]]:
+    """Parse HTTP Link headers, collecting all URIs per rel value.
+
+    Unlike parse_link_headers(), this preserves multiple values for the same
+    rel key — needed for rel="type" which can list multiple RDF types.
+
+    Example:
+        '<ldp:Container>; rel="type", <pim:Storage>; rel="type"'
+        -> {"type": ["ldp:Container", "pim:Storage"]}
+    """
+    result: dict[str, list[str]] = {}
+    if not header_value:
+        return result
+
+    for part in header_value.split(","):
+        part = part.strip()
+        match = re.match(r'<([^>]+)>\s*;\s*rel="([^"]+)"', part)
+        if match:
+            uri, rel = match.groups()
+            result.setdefault(rel, []).append(uri)
 
     return result
 

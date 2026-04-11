@@ -1,7 +1,8 @@
 """Tests for DPoP proof generation and verification (bidirectional)."""
 
-import time
 import jwt
+import pytest
+
 from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
 
 
@@ -95,64 +96,64 @@ class TestVerifyDPoPProof:
     def test_wrong_method_fails(self):
         key = DPoPKey()
         proof = key.sign_proof("GET", "http://example.org/resource")
-        try:
+        with pytest.raises(ValueError, match="htm mismatch"):
             verify_dpop_proof(proof, "token", "POST", "http://example.org/resource")
-            assert False, "Should have raised"
-        except ValueError as e:
-            assert "htm mismatch" in str(e)
 
     def test_wrong_url_fails(self):
         key = DPoPKey()
         proof = key.sign_proof("GET", "http://example.org/a")
-        try:
+        with pytest.raises(ValueError, match="htu mismatch"):
             verify_dpop_proof(proof, "token", "GET", "http://example.org/b")
-            assert False, "Should have raised"
-        except ValueError as e:
-            assert "htu mismatch" in str(e)
 
     def test_wrong_ath_fails(self):
         key = DPoPKey()
         ath = compute_ath("token-a")
         proof = key.sign_proof("GET", "http://example.org/r", ath=ath)
-        try:
+        with pytest.raises(ValueError, match="ath mismatch"):
             verify_dpop_proof(proof, "token-b", "GET", "http://example.org/r")
-            assert False, "Should have raised"
-        except ValueError as e:
-            assert "ath mismatch" in str(e)
 
     def test_expired_proof_fails(self):
+        import time as _time
+
+        import jwt as _jwt
         key = DPoPKey()
         ath = compute_ath("token")
-        proof = key.sign_proof("GET", "http://example.org/r", ath=ath)
-        try:
-            verify_dpop_proof(proof, "token", "GET", "http://example.org/r", max_age=0, clock_skew=0)
-        except ValueError as e:
-            assert "expired" in str(e).lower()
+        # Manually craft a proof with iat 600 seconds in the past
+        payload = {
+            "htm": "GET",
+            "htu": "http://example.org/r",
+            "iat": int(_time.time()) - 600,
+            "jti": "expired-proof-jti",
+            "ath": ath,
+        }
+        proof = _jwt.encode(payload, key._private_key, algorithm="ES256", headers={
+            "typ": "dpop+jwt",
+            "alg": "ES256",
+            "jwk": key.jwk,
+        })
+        with pytest.raises(ValueError, match="(?i)expired"):
+            verify_dpop_proof(
+                proof, "token", "GET", "http://example.org/r", max_age=300, clock_skew=60
+            )
 
     def test_missing_ath_on_resource_request_fails(self):
         """RFC 9449: ath is required when access_token is provided."""
         key = DPoPKey()
         proof = key.sign_proof("GET", "http://example.org/r")  # no ath
-        try:
+        with pytest.raises(ValueError, match="(?i)missing ath"):
             verify_dpop_proof(proof, "some-token", "GET", "http://example.org/r")
-            assert False, "Should have raised"
-        except ValueError as e:
-            assert "missing ath" in str(e).lower()
 
     def test_jti_replay_detection(self):
         key = DPoPKey()
         token = "test-token"
         ath = compute_ath(token)
         proof = key.sign_proof("GET", "http://example.org/r", ath=ath)
-        seen = set()
+        seen: set[str] = set()
         # First verification succeeds
         verify_dpop_proof(proof, token, "GET", "http://example.org/r", seen_jti=seen)
         # Replay fails
-        try:
+        with pytest.raises(ValueError, match="(?i)replayed"):
             verify_dpop_proof(proof, token, "GET", "http://example.org/r", seen_jti=seen)
-            assert False, "Should have raised"
-        except ValueError as e:
-            assert "replayed" in str(e).lower()
 
     def test_no_ath_required_for_token_endpoint(self):
         """Token endpoint requests have no access_token, so no ath required."""

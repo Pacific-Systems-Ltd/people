@@ -17,7 +17,6 @@ Setup:
     Or use the setup_css_account() helper below.
 """
 
-import asyncio
 import json
 import urllib.parse
 import urllib.request
@@ -138,7 +137,10 @@ def setup_css_account() -> dict:
 def css_credentials():
     """Session-scoped fixture: creates CSS account once, shares across all E2E tests."""
     if not is_css_running():
-        pytest.skip("CSS not running on localhost:3000. Run: docker run --rm -d --name css-test -p 3000:3000 solidproject/community-server:latest -b http://localhost:3000")
+        pytest.skip(
+            "CSS not running on localhost:3000. Run: docker run --rm -d --name css-test"
+            " -p 3000:3000 solidproject/community-server:latest -b http://localhost:3000"
+        )
 
     try:
         return setup_css_account()

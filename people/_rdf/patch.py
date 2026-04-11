@@ -9,15 +9,30 @@ from __future__ import annotations
 from people._graph.triple import URI, Literal, Triple
 
 
-def build_n3_patch(inserts: list[Triple], deletes: list[Triple]) -> str:
-    """Build an N3 Patch body from insert and delete triple lists.
+def build_n3_patch(
+    inserts: list[Triple],
+    deletes: list[Triple],
+    where: list[tuple[str, str, str]] | None = None,
+) -> str:
+    """Build an N3 Patch body from insert, delete, and where clause triple lists.
 
     Produces a valid solid:InsertDeletePatch document per Solid Protocol 5.3.1.
 
-    Raises ValueError if both inserts and deletes are empty.
+    Args:
+        inserts: Triples to insert.
+        deletes: Triples to delete.
+        where: Optional condition triples as (subject, predicate, object) tuples.
+            Strings starting with '?' are N3 variables (e.g. '?person').
+            Variables used in inserts/deletes must appear in where.
+
+    Raises ValueError if both inserts and deletes are empty, or if variables
+    in inserts/deletes are not bound in the where clause.
     """
     if not inserts and not deletes:
         raise ValueError("Cannot build N3 Patch with no inserts or deletes")
+
+    if where is not None:
+        _validate_variable_bindings(inserts, deletes, where)
 
     lines = [
         "@prefix solid: <http://www.w3.org/ns/solid/terms#>.",
@@ -26,6 +41,10 @@ def build_n3_patch(inserts: list[Triple], deletes: list[Triple]) -> str:
     ]
 
     parts = []
+
+    if where is not None:
+        where_body = _serialize_where_triples(where)
+        parts.append(f"  solid:where {{ {where_body} }}")
 
     if deletes:
         delete_body = _serialize_triples(deletes)
@@ -38,6 +57,59 @@ def build_n3_patch(inserts: list[Triple], deletes: list[Triple]) -> str:
     lines.append(";\n".join(parts) + ".")
 
     return "\n".join(lines)
+
+
+def _is_variable(term: str) -> bool:
+    """Check if a string is an N3 variable (starts with ?)."""
+    return isinstance(term, str) and term.startswith("?")
+
+
+def _collect_variables(triples: list[Triple]) -> set[str]:
+    """Collect all N3 variable references from triple term values."""
+    variables: set[str] = set()
+    for t in triples:
+        if _is_variable(str(t.subject)):
+            variables.add(str(t.subject))
+        if _is_variable(str(t.object)):
+            variables.add(str(t.object))
+    return variables
+
+
+def _validate_variable_bindings(
+    inserts: list[Triple],
+    deletes: list[Triple],
+    where: list[tuple[str, str, str]],
+) -> None:
+    """Validate that all variables in inserts/deletes are bound in the where clause."""
+    where_vars: set[str] = set()
+    for s, p, o in where:
+        if _is_variable(s):
+            where_vars.add(s)
+        if _is_variable(p):
+            where_vars.add(p)
+        if _is_variable(o):
+            where_vars.add(o)
+
+    used_vars = _collect_variables(inserts) | _collect_variables(deletes)
+    unbound = used_vars - where_vars
+    if unbound:
+        raise ValueError(
+            f"Variables {unbound} in inserts/deletes are not bound in the where clause"
+        )
+
+
+def _serialize_where_triples(where: list[tuple[str, str, str]]) -> str:
+    """Serialize where clause triples, preserving ?variable syntax."""
+    parts = []
+    for s, p, o in where:
+        s_str = s if _is_variable(s) else f"<{s}>"
+        p_str = p if _is_variable(p) else f"<{p}>"
+        if _is_variable(o) or o.startswith('"'):
+            o_str = o
+        else:
+            o_str = f"<{o}>"
+        parts.append(f"{s_str} {p_str} {o_str} .")
+    return " ".join(parts)
 
 
 def apply_patch(graph_triples: list[Triple], patch_body: str) -> list[Triple]:

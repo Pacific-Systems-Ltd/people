@@ -5,23 +5,18 @@ correctly reject malicious inputs. Every test assumes the caller is
 an attacker trying to bypass authentication or authorization.
 """
 
-import base64
-import hashlib
-import json
 import time
 import uuid
 
 import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import ec
 
-from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
 from people._acl.wac import evaluate_wac
+from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
 from people._graph.graph import Graph
 from people._graph.triple import URI, Literal
-from people._rdf.namespaces import ACL, FOAF, RDF
-from people._rdf.patch import apply_patch, build_n3_patch
-
+from people._rdf.namespaces import ACL, RDF
+from people._rdf.patch import build_n3_patch
 
 # ============================================================
 # 1. DPoP PROOF ATTACKS
@@ -105,7 +100,7 @@ class TestDPoPForgery:
             "alg": "ES256",
             "jwk": key_b.jwk,  # key B's public key
         })
-        with pytest.raises(Exception):  # JWT signature verification fails
+        with pytest.raises((ValueError, jwt.exceptions.InvalidSignatureError)):
             verify_dpop_proof(fake, "", "GET", "http://pod/resource")
 
     def test_private_key_in_jwk_rejected(self):
@@ -150,9 +145,7 @@ class TestDPoPForgery:
             "alg": "ES256",
             "jwk": key.jwk,
         })
-        # PyJWT raises ImmatureSignatureError, our code raises ValueError.
-        # Either is correct — the proof is rejected.
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, jwt.exceptions.ImmatureSignatureError)):
             verify_dpop_proof(proof, "", "GET", "http://pod/resource", clock_skew=60)
 
     def test_replay_attack(self):
@@ -375,8 +368,9 @@ class TestPatchAttacks:
     def test_patch_builder_escapes_quotes_in_literals(self):
         """Attacker includes quotes in literal values to break N3 syntax."""
         from people import Triple
+        payload = '"; <http://evil> <http://evil> "injection'
         inserts = [
-            Triple(URI("http://ex/s"), URI("http://ex/p"), Literal('"; <http://evil> <http://evil> "injection')),
+            Triple(URI("http://ex/s"), URI("http://ex/p"), Literal(payload)),
         ]
         body = build_n3_patch(inserts, [])
         # The quotes must be escaped
