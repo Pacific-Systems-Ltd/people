@@ -51,6 +51,8 @@ class SolidSession:
         issuer: str,
         client_id: str,
         client_secret: str,
+        *,
+        discovery_url: str = "",
     ) -> SolidSession:
         """Authenticate with a Solid OIDC issuer using client credentials.
 
@@ -58,15 +60,20 @@ class SolidSession:
             issuer: The OIDC issuer URL (e.g. "http://localhost:3000")
             client_id: The client ID from the Solid server
             client_secret: The client secret
+            discovery_url: HTTP endpoint for OIDC discovery. Defaults to issuer.
+                Use when the issuer (stored in credentials) differs from the
+                reachable HTTP address (e.g. after migrating to a new hostname).
 
         Returns:
             An authenticated SolidSession.
         """
         from people._http.tls import enforce_tls
-        enforce_tls(issuer)
 
-        logger.debug("Discovering OIDC configuration at %s", issuer)
-        oidc_config = await discover_oidc(issuer)
+        discover_at = discovery_url or issuer
+        enforce_tls(discover_at)
+
+        logger.debug("Discovering OIDC configuration at %s", discover_at)
+        oidc_config = await discover_oidc(discover_at)
         token_endpoint = oidc_config["token_endpoint"]
 
         dpop_key = DPoPKey()

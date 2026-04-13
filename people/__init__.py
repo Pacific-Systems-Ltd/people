@@ -87,13 +87,14 @@ Append = ACL.Append
 Control = ACL.Control
 
 
-async def login(issuer: str, client_id: str, client_secret: str):
+async def login(issuer: str, client_id: str, client_secret: str, *, discovery_url: str = ""):
     """Authenticate with a Solid OIDC issuer. Returns a SolidSession.
 
     Args:
         issuer: The OIDC issuer URL (e.g. "http://localhost:3000")
         client_id: The client ID
         client_secret: The client secret
+        discovery_url: HTTP endpoint for OIDC discovery. Defaults to issuer.
 
     Usage:
         me = await ps.login("http://localhost:3000", "my-id", "my-secret")
@@ -101,7 +102,7 @@ async def login(issuer: str, client_id: str, client_secret: str):
         graph = await alice.read("notes/hello")
     """
     from people._auth.session import SolidSession
-    return await SolidSession.login(issuer, client_id, client_secret)
+    return await SolidSession.login(issuer, client_id, client_secret, discovery_url=discovery_url)
 
 
 async def login_interactive(
