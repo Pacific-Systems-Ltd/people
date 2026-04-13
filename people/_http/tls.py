@@ -14,15 +14,19 @@ _LOCALHOST_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1"}
 
 
 def enforce_tls(url: str) -> None:
-    """Raise SolidError if the URL uses HTTP and the host is not localhost.
+    """Raise SolidError if the URL uses HTTP and the host is not trusted.
 
-    Allows http:// only for localhost/127.0.0.1/[::1] (local development).
+    Allows http:// for localhost (local dev) and .internal hosts
+    (Fly.io private network — encrypted at the WireGuard layer).
     All other hosts require https://.
     """
     parsed = urlparse(url)
     if parsed.scheme == "https":
         return
-    if parsed.scheme == "http" and parsed.hostname in _LOCALHOST_HOSTS:
+    hostname = parsed.hostname or ""
+    if parsed.scheme == "http" and (
+        hostname in _LOCALHOST_HOSTS or hostname.endswith(".internal")
+    ):
         return
     raise SolidError(
         f"Refusing to transmit credentials over insecure connection to {url}. "
