@@ -49,17 +49,7 @@ Issues = "https://github.com/Pacific-Systems-Ltd/people/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["people", "pacific_solid"]
 
-[tool.ruff]
-target-version = "py311"
-line-length = 100
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "A", "SIM"]
-ignore = [
-    "N807",   # dunder function names in model decorator (intentional)
-    "SIM105", # contextlib.suppress vs try/except/pass (readability preference)
-    "SIM108", # ternary vs if/else (readability preference)
-]
+# Ruff config lives in ./ruff.toml (synced from pacific-infra/workflows/ruff.toml).
 
 [tool.mypy]
 python_version = "3.11"

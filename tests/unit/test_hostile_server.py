@@ -12,7 +12,6 @@ import time
 import httpx
 import pytest
 import respx
-
 from people._auth.dpop import DPoPKey
 from people._graph.graph import Graph
 from people._graph.triple import URI, Literal

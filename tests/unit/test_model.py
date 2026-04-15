@@ -1,8 +1,7 @@
 """Tests for @ps.model decorator, ps.field(), and dirty tracking."""
 
-import pytest
-
 import people as ps
+import pytest
 from people import FOAF, RDF, SCHEMA, URI, Graph, Literal
 
 

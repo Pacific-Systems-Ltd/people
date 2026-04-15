@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solid Forum &mdash; Brief Paper</title>
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --fg: #1a1a1a;
+      --accent: #7c3aed;
+      --border: #e5e5e5;
+      --muted: #6b7280;
+      --code-bg: #f3f4f6;
+      --max-w: 48rem;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Georgia", "Times New Roman", serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.8;
+      font-size: 17px;
+    }
+
+    article {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 4rem 2rem 5rem;
+    }
+
+    .title-block {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .title-block h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 0.4rem;
+    }
+
+    .title-block .subtitle {
+      font-size: 1.1rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 1.5rem;
+    }
+
+    .title-block .authors {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .abstract {
+      background: var(--code-bg);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2.5rem;
+      font-size: 0.95rem;
+      line-height: 1.75;
+    }
+
+    .abstract strong { display: block; margin-bottom: 0.5rem; font-family: -apple-system, sans-serif; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    p { margin-bottom: 1rem; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.3rem; }
+
+    em { font-style: italic; }
+
+    code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.9rem;
+      font-family: -apple-system, sans-serif;
+    }
+
+    th, td { text-align: left; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); }
+    th { font-weight: 600; background: var(--code-bg); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+    .references { font-size: 0.9rem; line-height: 1.7; }
+    .references p { margin-bottom: 0.75rem; padding-left: 2rem; text-indent: -2rem; }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 2rem;
+      font-family: -apple-system, sans-serif;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .back:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      article { padding: 2rem 1.25rem 3rem; }
+      .title-block h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<article>
+
+<a href="index.html" class="back">&larr; Back to project</a>
+
+<div class="title-block">
+  <h1>Solid Forum</h1>
+  <p class="subtitle">Sovereign Deliberation for the Solid Community</p>
+  <p class="authors">
+    Ralph Heward-Mills &middot; Pacific Systems Ltd<br>
+    Solid Symposium Hackathon, London, April 2026
+  </p>
+</div>
+
+<div class="abstract">
+  <strong>Abstract</strong>
+  We present Solid Forum, a public deliberation tool for the Solid community that runs on the Solid protocol itself. Participants log in with their WebID, write short statements about the project&rsquo;s direction, and vote on others&rsquo; statements &mdash; with every contribution stored in the participant&rsquo;s own pod, not on a central server. The forum aggregates contributions with consent, clusters voting patterns to surface consensus and disagreement, and uses AI to summarise the community&rsquo;s position. The process follows vTaiwan&rsquo;s four-stage deliberation model (propose, opine, reflect, decide), adapted for the Solid Symposium. The result is a queryable, linked-data knowledge graph of what the Solid community thinks &mdash; owned collectively, controlled individually. Built on <code>people</code>, the first production-grade Python SDK for the Solid Protocol.
+</div>
+
+<!-- ── 1 ──────────────────────────────────────────── -->
+
+<h2>1. The Problem</h2>
+
+<p>
+  The Solid community has a protocol, a specification process, and a growing ecosystem of deployments. What it lacks is a structured, inclusive mechanism for surfacing community-wide priorities and building consensus on strategic direction.
+</p>
+<p>
+  Discussion currently happens across GitHub issues, the Solid Community Forum (Discourse), Matrix channels, the weekly community call, and ad hoc conversations at events. Each channel has a selection effect: GitHub reaches implementers, Discourse reaches engaged enthusiasts, the weekly call reaches those in compatible timezones. None provides a systematic picture of where the broader community &mdash; including deployers, academics, policymakers, and newcomers &mdash; actually stands on the questions that matter.
+</p>
+<p>
+  The Solid Symposium convenes this broader community once a year. The 2026 edition features sessions on &ldquo;Achieving adoption of Solid at scale,&rdquo; WAC vs. ACP, Solid Notifications, federated learning, and decentralised AI. These are strategic questions with genuine disagreement. But the Symposium&rsquo;s format &mdash; talks, panels, hallway conversations &mdash; does not produce a legible record of where the community lands.
+</p>
+<p>
+  More pointedly: a community that builds decentralised, user-sovereign infrastructure governs itself with centralised, platform-owned tools. The forum posts belong to Discourse. The issues belong to GitHub. The chat logs belong to Matrix. If the Solid protocol is ready for real applications, it should be ready for this one.
+</p>
+
+<!-- ── 2 ──────────────────────────────────────────── -->
+
+<h2>2. vTaiwan: A Proven Model</h2>
+
+<p>
+  vTaiwan is an open consultation process created by Taiwan&rsquo;s g0v civic hacking community in 2014. It has facilitated deliberation on 20+ legislative issues, with the government acting on 80% of proposals. The process design is the key innovation.
+</p>
+
+<h3>2.1 The Four Stages</h3>
+<p>
+  <strong>Proposal.</strong> Weekly hackathons (in-person + virtual) where anyone &mdash; programmers, journalists, public servants, students &mdash; can submit an issue for discussion. Both a government body and vTaiwan facilitators must agree to proceed. Research and stakeholder mapping happen here.
+</p>
+<p>
+  <strong>Opinion.</strong> A month-long open collection phase. Two tools work in tandem: <em>Discourse</em> for questions and long-form responses (government officials must respond within one week), and <em>Polis</em> for short statements and voting. Participants write one- or two-sentence positions and vote agree/disagree/pass on others&rsquo;. Crucially, <strong>there is no reply button</strong>. This prevents threads from becoming arguments. Polis clusters participants by voting pattern, visualising where consensus exists and where groups diverge. The design incentivises <em>bridging statements</em> &mdash; positions that attract agreement across clusters.
+</p>
+<p>
+  <strong>Reflection.</strong> In-person stakeholder meetings, livestreamed and open to public questions via chat. Facilitators use the ORID method (Objective &rarr; Reflective &rarr; Interpretive &rarr; Decisional). Raw and analysed reports are published.
+</p>
+<p>
+  <strong>Legislation.</strong> Rough consensus is converted into policy. The government must act or publicly explain why not.
+</p>
+
+<h3>2.2 What Makes It Work</h3>
+<ul>
+  <li>Short statements lower the barrier to participation</li>
+  <li>No reply button prevents polarisation</li>
+  <li>Voting reveals latent consensus that threaded discussion obscures</li>
+  <li>Clustering shows the <em>shape</em> of disagreement, not just its existence</li>
+  <li>Mandatory response creates accountability</li>
+  <li>Hybrid online-offline format combines scale with depth</li>
+</ul>
+
+<h3>2.3 Alignment Assemblies</h3>
+<p>
+  Audrey Tang extended this model with Alignment Assemblies (2023&ndash;present), developed with the Collective Intelligence Project, Anthropic, and OpenAI. Hundreds of thousands of randomly selected citizens are invited to co-create AI governance guidelines, using Polis as the deliberative engine. The project received the Right Livelihood Award in 2025. It demonstrates that structured public deliberation works at scale &mdash; and that AI can assist the process without capturing it.
+</p>
+
+<!-- ── 3 ──────────────────────────────────────────── -->
+
+<h2>3. Solid Forum</h2>
+
+<p>
+  Solid Forum adapts the vTaiwan process for the Solid community, with one structural difference: <strong>the data layer runs on Solid</strong>.
+</p>
+
+<h3>3.1 Participation Flow</h3>
+<ol>
+  <li><strong>Log in with your WebID.</strong> Any Solid identity provider. Authentication uses the Solid-OIDC Authorization Code flow with PKCE, handled by the <code>people</code> SDK.</li>
+  <li><strong>Write a statement.</strong> A short position on the current topic. The app writes it as an RDF document to the participant&rsquo;s pod at <code>/forum/statements/</code>.</li>
+  <li><strong>Vote on others&rsquo; statements.</strong> Agree, disagree, or pass. Each vote is stored in the participant&rsquo;s pod at <code>/forum/votes/</code>. No reply button.</li>
+  <li><strong>Grant the aggregator read access.</strong> The participant grants the forum&rsquo;s aggregator WebID Read access to their <code>/forum/</code> container via WAC.</li>
+  <li><strong>See the consensus map.</strong> The aggregator reads from all consenting participants&rsquo; pods, clusters voting patterns, and renders a live visualisation.</li>
+</ol>
+
+<h3>3.2 What Lives Where</h3>
+
+<table>
+  <thead>
+    <tr><th>Data</th><th>Location</th><th>Controlled by</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Your statements</td><td>Your pod</td><td>You</td></tr>
+    <tr><td>Your votes</td><td>Your pod</td><td>You</td></tr>
+    <tr><td>The aggregate consensus</td><td>A shared public pod</td><td>The community</td></tr>
+    <tr><td>The AI summary</td><td>The shared public pod</td><td>The community</td></tr>
+    <tr><td>The application code</td><td>Open source repository</td><td>Anyone</td></tr>
+  </tbody>
+</table>
+
+<p>
+  The aggregator never stores participant data. It reads from pods in real time. If a participant revokes access, their contributions disappear from the aggregate &mdash; because they were never copied.
+</p>
+
+<h3>3.3 The AI Layer</h3>
+<p>
+  An AI assistant reads the aggregated consensus data &mdash; not individual pods &mdash; and produces a structured summary: main areas of consensus, points of disagreement, bridging statements that attracted cross-cluster support, and unresolved questions. The summary is written as linked data to the shared public pod, attributable and auditable. The AI never accesses participant pods directly; it operates on the already-consented aggregate.
+</p>
+
+<h3>3.4 From Hackathon to Symposium</h3>
+<p>
+  The hackathon (April 27&ndash;29) builds the forum and seeds it with topics drawn from the Symposium programme. The forum opens during the Symposium (April 30 &ndash; May 1). Participants &mdash; both in-person attendees and remote contributors with WebIDs &mdash; write statements and vote. The consensus map updates live. The AI summary is presented at the closing session.
+</p>
+<p>
+  The forum remains open after the Symposium. If it&rsquo;s useful, it becomes a standing tool for the community. If it isn&rsquo;t, the community will have learned something concrete about what Solid still needs.
+</p>
+
+<!-- ── 4 ──────────────────────────────────────────── -->
+
+<h2>4. Why This Matters</h2>
+
+<h3>4.1 For the Solid Community</h3>
+<p>
+  The forum produces a legible, structured record of community priorities &mdash; not another thread, but a knowledge graph of positions, clusters, and consensus. Spec editors, implementers, and deployers can see where the broader community actually stands on strategic questions.
+</p>
+
+<h3>4.2 For the Solid Protocol</h3>
+<p>
+  Building a real application on Solid, at an event full of Solid experts, is the most honest test of the protocol&rsquo;s readiness. Every friction point the forum encounters &mdash; authentication UX, pod provisioning, notification latency, WAC complexity &mdash; is a signal about what needs work. The community benefits whether the demo succeeds or struggles.
+</p>
+
+<h3>4.3 For Deliberation Technology</h3>
+<p>
+  vTaiwan works, but participants&rsquo; data lives on Polis servers. Alignment Assemblies work at scale, but on centralised infrastructure. Solid Forum demonstrates that sovereign deliberation is possible: the same participation design, the same consensus-building interaction, but with data sovereignty at the protocol level.
+</p>
+
+<h3>4.4 For the Broader Ecosystem</h3>
+<p>
+  This project draws on a literature review prepared for <a href="https://www.tial.org">The Institutional Architecture Lab</a>, examining how governments use federated knowledge graphs for institutional memory &mdash; from Estonia&rsquo;s X-Road to GAIA-X. The common gap is a consent layer between institutions and the people they serve. Solid Forum is a small, concrete instance of that layer: a community governing itself with sovereign data.
+</p>
+
+<!-- ── 5 ──────────────────────────────────────────── -->
+
+<h2>5. Technical Foundation</h2>
+<p>
+  Solid Forum is built on <code>people</code> (<code>pacific-solid</code>), the first production-grade Python SDK for the Solid Protocol. The SDK provides Solid-OIDC + DPoP authentication (both client credentials and browser-based auth code flow with PKCE), Pod CRUD, <code>@ps.model</code> for typed RDF models, WAC evaluation and grant management, LDN inbox discovery and messaging, Solid Notifications with WebSocket streaming, and graph converters to pandas, NetworkX, and dict formats. It is MIT-licensed and open source.
+</p>
+
+<!-- ── 6 ──────────────────────────────────────────── -->
+
+<h2>6. Conclusion</h2>
+<p>
+  The Solid community should govern its own development with the tools it builds. Solid Forum makes this possible: a vTaiwan-style deliberation process where every contribution lives in the participant&rsquo;s pod, the aggregate is a public knowledge graph, and the output belongs to everyone. The hackathon builds it. The Symposium uses it. The community decides what happens next.
+</p>
+
+<!-- ── References ────────────────────────────────── -->
+
+<hr>
+
+<h2>References</h2>
+
+<div class="references">
+  <p>Baura, A. (2025). European ambitions captured by American clouds: digital sovereignty through Gaia-X? <em>Information, Communication &amp; Society</em>, 29(2). DOI: 10.1080/1369118X.2025.2516545</p>
+  <p>Calzati, S. &amp; van Loenen, B. (2023). Beyond federated data: a data commoning proposition for the EU&rsquo;s citizen-centric digital strategy. <em>AI &amp; Society</em>. DOI: 10.1007/s00146-023-01743-9</p>
+  <p>Cui, P.J.-W. (2023). Interview in Kurihara, K., Privacy Talk with Peter Jia-Wei Cui, Contributor of vTaiwan Community. <em>Medium / Privacy Talk</em>.</p>
+  <p>Hardy, A. (2024). Estonia&rsquo;s digital diplomacy: Nordic interoperability and the challenges of cross-border e-governance. <em>Internet Policy Review</em>, 13(3).</p>
+  <p>Mero&ntilde;o-Pe&ntilde;uela, A., Simperl, E., Kurteva, A., &amp; Reklos, I. (2025). KG.GOV: Knowledge graphs as the backbone of data governance in AI. <em>Journal of Web Semantics</em>, 85, 100847. DOI: 10.1016/j.websem.2024.100847</p>
+  <p>Puura, A., Soe, R.-M., &amp; Thabit, S. (2026). Advancing interoperability of data exchange in Europe: Insights from Estonia&rsquo;s experience for the common European data spaces. <em>Data in Brief</em>, 64, 112361. DOI: 10.1016/j.dib.2025.112361</p>
+  <p>Serderidis, K., Konstantinidis, I., Meditskos, G., Peristeras, V., &amp; Bassiliades, N. (2024). d2kg: An integrated ontology for knowledge graph-based representation of government decisions and acts. <em>Semantic Web Journal</em>. DOI: 10.3233/SW-243535</p>
+  <p>Zhang, Y., Porter, A.L., Cunningham, S.W., Chiavetta, D., &amp; Newman, N. (2021). Parallel or Intersecting Lines? Intelligent Bibliometrics for Investigating the Involvement of Data Science in Policy Analysis. <em>IEEE Transactions on Engineering Management</em>, 68(5), 1259&ndash;1271. DOI: 10.1109/TEM.2020.2974761</p>
+</div>
+
+</article>
+
+</body>
+</html>

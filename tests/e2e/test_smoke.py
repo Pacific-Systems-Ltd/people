@@ -12,9 +12,8 @@ Run:
 import uuid
 
 import httpx
-import pytest
-
 import people as ps
+import pytest
 from people import RDF, SCHEMA, URI, Graph, Literal
 from people._http.errors import SolidError
 from people._rdf.patch import build_n3_patch

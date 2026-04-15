@@ -10,7 +10,6 @@ import uuid
 
 import jwt
 import pytest
-
 from people._acl.wac import evaluate_wac
 from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
 from people._graph.graph import Graph

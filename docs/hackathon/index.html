@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solid Forum &mdash; Solid Symposium Hackathon 2026</title>
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --fg: #1a1a1a;
+      --accent: #7c3aed;
+      --accent-light: #ede9fe;
+      --accent-dark: #5b21b6;
+      --border: #e5e5e5;
+      --muted: #6b7280;
+      --code-bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --max-w: 64rem;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.7;
+      font-size: 17px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+      color: #f5f3ff;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+    }
+
+    header .inner { max-width: var(--max-w); margin: 0 auto; }
+
+    header h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.75rem;
+    }
+
+    header .subtitle {
+      font-size: 1.3rem;
+      color: #c4b5fd;
+      margin-bottom: 0.5rem;
+      font-weight: 400;
+    }
+
+    header .context {
+      font-size: 1rem;
+      color: #a78bfa;
+      margin-bottom: 2rem;
+    }
+
+    header .cta {
+      display: inline-block;
+      background: #f5f3ff;
+      color: #4c1d95;
+      padding: 0.85rem 2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    header .cta:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-decoration: none; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+
+    nav .inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      display: flex;
+      gap: 2rem;
+      overflow-x: auto;
+    }
+
+    nav a {
+      display: block;
+      padding: 0.85rem 0;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    nav a:hover, nav a:focus { color: var(--fg); border-bottom-color: var(--accent); }
+
+    /* ── Main ────────────────────────────────────────────── */
+
+    main {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 3rem 2rem 5rem;
+    }
+
+    section { margin-bottom: 4rem; }
+
+    h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-top: 1rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p { margin-bottom: 1rem; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Callout ─────────────────────────────────────────── */
+
+    .callout {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 1.5rem 2rem;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 2rem;
+      font-size: 1.05rem;
+    }
+
+    /* ── Cards ───────────────────────────────────────────── */
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .card h3 { margin-top: 0; }
+
+    .card .label {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .card .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── Steps (horizontal) ──────────────────────────────── */
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .steps .card { text-align: center; }
+    .steps .card h3 { font-size: 1.05rem; }
+    .steps .card p { font-size: 0.92rem; color: var(--muted); }
+
+    /* ── Diagram ─────────────────────────────────────────── */
+
+    .diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      white-space: pre;
+      margin: 1.5rem 0;
+    }
+
+    /* ── Table ───────────────────────────────────────────── */
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--code-bg);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    /* ── Code ────────────────────────────────────────────── */
+
+    code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    /* ── List ────────────────────────────────────────────── */
+
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.35rem; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer a { color: var(--muted); }
+
+    /* ── Responsive ──────────────────────────────────────── */
+
+    @media (max-width: 640px) {
+      header h1 { font-size: 2rem; }
+      header .subtitle { font-size: 1.05rem; }
+      main { padding: 2rem 1.25rem 3rem; }
+      .cards { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<header>
+  <div class="inner">
+    <h1>Solid Forum</h1>
+    <p class="subtitle">A public deliberation tool for the Solid community, built on Solid.</p>
+    <p class="context">Solid Symposium Hackathon &middot; 27&ndash;29 April 2026 &middot; London</p>
+    <a href="#participate" class="cta">How to participate</a>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- NAV                                                     -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<nav>
+  <div class="inner">
+    <a href="#what">What is this</a>
+    <a href="#participate">Participate</a>
+    <a href="#process">Process</a>
+    <a href="#why-solid">Why on Solid</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#prior-art">Inspired by</a>
+    <a href="#paper">Paper</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- MAIN                                                    -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<main>
+
+<!-- ── What ─────────────────────────────────────────────── -->
+
+<section id="what">
+  <h2>What is Solid Forum?</h2>
+  <div class="callout">
+    A public forum where the Solid community deliberates on its own future &mdash;
+    and every contribution is stored in your Solid pod, not on our server.
+  </div>
+  <p>
+    The Solid project has a protocol, a community, and a growing ecosystem of
+    deployments. What it doesn&rsquo;t have is a structured, inclusive way to surface
+    what the community thinks should happen next. Forum threads are noisy. GitHub
+    issues track implementation, not strategy. The weekly community calls reach a
+    fraction of the people who care.
+  </p>
+  <p>
+    Solid Forum is a deliberation tool &mdash; modelled on
+    <a href="https://vtaiwan.tw">vTaiwan</a>&rsquo;s process, which has shaped 20+
+    pieces of legislation in Taiwan &mdash; that lets <strong>anyone</strong> in the
+    Solid community write short statements about the project&rsquo;s direction, vote on
+    others&rsquo; statements, and see where consensus and disagreement actually lie.
+  </p>
+  <p>
+    The difference: it runs on Solid. Your contributions live in your pod.
+    You control who can read them, and you can take them with you.
+  </p>
+</section>
+
+<!-- ── Participate ──────────────────────────────────────── -->
+
+<section id="participate">
+  <h2>How to participate</h2>
+
+  <div class="cards">
+    <div class="card">
+      <span class="label">Step 1</span>
+      <h3>Log in with your Solid identity</h3>
+      <p>
+        Use your existing WebID from any Solid provider &mdash;
+        <a href="https://solidcommunity.net">solidcommunity.net</a>,
+        <a href="https://solidweb.org">solidweb.org</a>, your own CSS instance,
+        or any provider that supports Solid-OIDC.
+        Don&rsquo;t have one? You can create a pod in under a minute.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Step 2</span>
+      <h3>Write a statement</h3>
+      <p>
+        Short, clear positions on the topic under deliberation.
+        <em>&ldquo;WAC should remain the default access control mechanism.&rdquo;</em>
+        <em>&ldquo;The community needs an official Python SDK.&rdquo;</em>
+        <em>&ldquo;Solid Notifications should be the next spec priority.&rdquo;</em>
+        No character limit, but the best statements are one or two sentences.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Step 3</span>
+      <h3>Vote on others&rsquo; statements</h3>
+      <p>
+        <strong>Agree</strong>, <strong>disagree</strong>, or <strong>pass</strong>.
+        There is no reply button. This is deliberate &mdash;
+        it prevents threads from becoming arguments and rewards
+        statements that build bridges across groups.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Step 4</span>
+      <h3>See where the community stands</h3>
+      <p>
+        A live visualisation clusters participants by voting pattern.
+        You&rsquo;ll see which statements have broad consensus, which are divisive,
+        and which groups exist within the community. No names &mdash; just positions.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    Everything you write is stored in <strong>your</strong> Solid pod as linked data.
+    The forum reads it with your permission. If you revoke access, your contributions
+    disappear from the forum &mdash; because they were never on our server to begin with.
+  </p>
+</section>
+
+<!-- ── Process ──────────────────────────────────────────── -->
+
+<section id="process">
+  <h2>The deliberation process</h2>
+  <p>
+    Solid Forum follows the four-stage process pioneered by vTaiwan, adapted
+    for the Solid community at the Symposium:
+  </p>
+
+  <div class="steps">
+    <div class="card">
+      <div class="step-num">1</div>
+      <h3>Propose</h3>
+      <p>
+        At the hackathon (April 27&ndash;29), we seed the forum with
+        the questions the community is already debating. Anyone can
+        submit a topic.
+      </p>
+    </div>
+    <div class="card">
+      <div class="step-num">2</div>
+      <h3>Opine</h3>
+      <p>
+        During the symposium (April 30 &ndash; May 1), participants
+        write statements and vote. The forum is open to anyone with a
+        WebID &mdash; not just attendees.
+      </p>
+    </div>
+    <div class="card">
+      <div class="step-num">3</div>
+      <h3>Reflect</h3>
+      <p>
+        An AI assistant summarises the emerging consensus and points
+        of disagreement. The summary is published as linked data in a
+        shared pod &mdash; auditable, attributable, and forkable.
+      </p>
+    </div>
+    <div class="card">
+      <div class="step-num">4</div>
+      <h3>Decide</h3>
+      <p>
+        Results are presented at the symposium. The Solid community
+        &mdash; spec editors, implementers, deployers &mdash; sees where
+        the broader community actually stands.
+      </p>
+    </div>
+  </div>
+
+  <h3>Possible topics for the Symposium</h3>
+  <ul>
+    <li>What should be the next specification priority for Solid?</li>
+    <li>Should WAC or ACP be the recommended access control mechanism?</li>
+    <li>How should the community approach interoperability with EU Data Spaces?</li>
+    <li>What does &ldquo;achieving adoption at scale&rdquo; actually require?</li>
+    <li>How should Solid engage with AI agent frameworks?</li>
+  </ul>
+  <p>
+    These are starting points. The community proposes the real agenda.
+  </p>
+</section>
+
+<!-- ── Why Solid ────────────────────────────────────────── -->
+
+<section id="why-solid">
+  <h2>Why build this on Solid?</h2>
+
+  <div class="callout">
+    A community that builds decentralised, user-sovereign infrastructure
+    should govern itself with decentralised, user-sovereign infrastructure.
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Eat your own cooking</h3>
+      <p>
+        The Solid community discusses its future on GitHub, Discourse, Matrix, and
+        mailing lists &mdash; none of which run on Solid. If the protocol is ready
+        for real applications, it should be ready for this one. If it isn&rsquo;t, we&rsquo;ll
+        find out by trying.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Your data, your pod</h3>
+      <p>
+        On a traditional forum, your posts belong to the platform operator. On
+        Solid Forum, your statements live in your pod. You grant the forum read
+        access. You can revoke it. You can take your contributions to a different
+        aggregator, or analyse them yourself.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Linked data all the way down</h3>
+      <p>
+        Every statement, every vote, every consensus summary is stored as RDF.
+        The forum&rsquo;s output isn&rsquo;t a thread &mdash; it&rsquo;s a queryable knowledge graph
+        of what the Solid community thinks. It can be analysed, visualised,
+        and built upon by anyone.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Inclusive by default</h3>
+      <p>
+        You don&rsquo;t need to attend the Symposium to participate. You don&rsquo;t need to
+        be in the weekly call. Anyone with a WebID can write a statement and vote.
+        The forum is open before, during, and after the event.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ─────────────────────────────────────── -->
+
+<section id="how-it-works">
+  <h2>How it works</h2>
+
+  <h3>For participants</h3>
+  <p>
+    You open the forum in your browser. You log in with your Solid identity
+    (the same WebID you use for any Solid app). You see the current topic
+    and a stream of statements from other participants. You write your own,
+    vote on others, and watch the consensus map update in real time.
+  </p>
+  <p>
+    Behind the scenes, every statement you write is a small RDF document
+    stored in your pod. You grant the forum&rsquo;s aggregator read access.
+    Your votes are stored the same way. Nothing touches our server that
+    doesn&rsquo;t come from your pod with your permission.
+  </p>
+
+  <h3>For the forum</h3>
+
+  <div class="diagram">  Participant A          Participant B          Participant C
+  (their pod)            (their pod)            (their pod)
+       |                      |                      |
+       |   WAC: grant Read    |   WAC: grant Read    |
+       v                      v                      v
+  +-----------------------------------------------------------+
+  |                   Solid Forum Aggregator                   |
+  |                                                           |
+  |  1. Discovers participants via WebID + LDN inbox          |
+  |  2. Reads statements from each pod (with consent)         |
+  |  3. Clusters voting patterns (Polis-style)                |
+  |  4. AI summarises consensus + disagreement                |
+  |  5. Writes summary to a shared, public pod                |
+  +-----------------------------------------------------------+
+       |                                          |
+       v                                          v
+  Live consensus map                    Summary as linked data
+  (D3.js in browser)                    (public pod, auditable)</div>
+
+  <h3>What&rsquo;s stored in your pod</h3>
+
+  <table>
+    <thead>
+      <tr><th>Resource</th><th>What it contains</th><th>Who can read it</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/forum/statements/</code></td>
+        <td>Your written statements, each as an RDF document</td>
+        <td>The forum aggregator (you grant access)</td>
+      </tr>
+      <tr>
+        <td><code>/forum/votes/</code></td>
+        <td>Your agree/disagree/pass votes on others&rsquo; statements</td>
+        <td>The forum aggregator (you grant access)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    The forum aggregator never stores your data. It reads from pods in real time.
+    The consensus map and AI summary are written to a <strong>shared public pod</strong> &mdash;
+    the community&rsquo;s collective output, owned by no individual.
+  </p>
+
+  <h3>The technology</h3>
+
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Technology</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Authentication</td><td>Solid-OIDC + DPoP via the <a href="https://github.com/Pacific-Systems-Ltd/people"><code>people</code></a> SDK (browser auth code flow with PKCE)</td></tr>
+      <tr><td>Statement storage</td><td>RDF in participant pods, written via <code>pod.create()</code></td></tr>
+      <tr><td>Access control</td><td>WAC grants &mdash; participants grant the aggregator Read access</td></tr>
+      <tr><td>Real-time updates</td><td>Solid Notifications (WebSocket channel) via <code>NotificationStream</code></td></tr>
+      <tr><td>Consensus clustering</td><td>Polis-style opinion grouping from voting patterns</td></tr>
+      <tr><td>AI summary</td><td>Claude reads the aggregate (not individual pods) and summarises consensus</td></tr>
+      <tr><td>Visualisation</td><td>D3.js consensus map in the browser</td></tr>
+      <tr><td>Pod hosting</td><td><a href="https://github.com/CommunitySolidServer/CommunitySolidServer">Community Solid Server</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── Prior Art ─────────────────────────────────────────── -->
+
+<section id="prior-art">
+  <h2>Inspired by</h2>
+
+  <div class="cards">
+    <div class="card">
+      <span class="label">Taiwan</span>
+      <h3>vTaiwan</h3>
+      <p>
+        The deliberation process that shaped 20+ laws: propose, opine, reflect, decide.
+        Uses Polis for opinion clustering with no reply button &mdash; rewards
+        bridging statements over arguments. 80% of proposals were acted on by
+        the government. We adopt the same four-stage process and the same
+        interaction design.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Flanders</span>
+      <h3>Athumi</h3>
+      <p>
+        Europe&rsquo;s first data utility company: 6.5M citizens with Solid pods.
+        Proves the protocol works at national scale for citizen-controlled data.
+        Our forum uses the same Solid infrastructure for community-controlled
+        deliberation data.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Taiwan</span>
+      <h3>Alignment Assemblies</h3>
+      <p>
+        Audrey Tang + Collective Intelligence Project + Anthropic + OpenAI.
+        Hundreds of thousands of citizens invited to co-create AI governance
+        guidelines. Right Livelihood Award 2025. Demonstrates that structured
+        public deliberation works at scale with AI assistance.
+      </p>
+    </div>
+    <div class="card">
+      <span class="label">Research</span>
+      <h3>Sovereign Graphs</h3>
+      <p>
+        This project draws on a
+        <a href="sovereign-modules-brief.html">literature review</a>
+        prepared for <a href="https://www.tial.org">The Institutional Architecture Lab</a>,
+        examining how governments are using federated knowledge graphs
+        for institutional memory &mdash; from Estonia&rsquo;s X-Road to GAIA-X.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Paper ────────────────────────────────────────────── -->
+
+<section id="paper">
+  <h2>Paper</h2>
+  <p>
+    <a href="sovereign-modules-brief.html"><strong>Solid Forum: Sovereign Deliberation for the Solid Community</strong></a>
+  </p>
+  <p>
+    A brief paper explaining why the Solid community should govern its own
+    development with the tools it builds &mdash; and how vTaiwan&rsquo;s deliberation
+    process, combined with Solid&rsquo;s data sovereignty protocol, makes this possible.
+  </p>
+</section>
+
+<!-- ── About ────────────────────────────────────────────── -->
+
+<section id="about">
+  <h2>About</h2>
+  <p>
+    Solid Forum is a hackathon project by
+    <strong><a href="https://gopacific.ai">Pacific</a></strong>,
+    built on <a href="https://github.com/Pacific-Systems-Ltd/people"><code>people</code></a> &mdash;
+    the open-source (MIT) Python SDK for the Solid Project.
+  </p>
+  <p>
+    The forum is a gift to the community. The code is open source.
+    The data belongs to the participants. The output belongs to everyone.
+  </p>
+  <p>
+    If this is useful, it should outlive the hackathon. If it isn&rsquo;t,
+    we&rsquo;ll have learned something about what Solid still needs.
+    Either way, the community wins.
+  </p>
+</section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<footer>
+  <p>
+    Solid Forum &mdash; <a href="https://gopacific.ai">Pacific</a> &middot;
+    Solid Symposium Hackathon, London, April 2026 &middot;
+    Built with <a href="https://github.com/Pacific-Systems-Ltd/people"><code>people</code></a>
+  </p>
+</footer>
+
+</body>
+</html>

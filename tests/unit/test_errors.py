@@ -1,7 +1,6 @@
 """Tests for the Solid error hierarchy."""
 
 import pytest
-
 from people import (
     AccessDeniedError,
     AuthenticationError,

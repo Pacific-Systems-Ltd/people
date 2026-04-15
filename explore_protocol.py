@@ -9,19 +9,18 @@ Prerequisites:
     docker run --rm -d --name css-test -p 3000:3000 solidproject/community-server:latest -b http://localhost:3000
 """
 
-import json
-import time
-import uuid
 import base64
 import hashlib
+import json
+import time
 import urllib.parse
 import urllib.request
+import uuid
 
 # pip install PyJWT cryptography
 import jwt
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import ec
 
 # ──────────────────────────────────────────────────────────
 # Config from account setup (already done via curl above)
@@ -240,7 +239,7 @@ if status == 401:
 
 print(f"  Status: {status}")
 print(f"  WAC-Allow: {resp_headers.get('WAC-Allow', 'N/A')}")
-print(f"\n  Body (Turtle):")
+print("\n  Body (Turtle):")
 print(resp_body)
 print()
 
@@ -341,7 +340,7 @@ if created_url and created_url != "N/A":
 
     print(f"  Status: {status}")
     print(f"  ETag: {resp_headers.get('ETag', 'N/A')}")
-    print(f"\n  Body (Turtle):")
+    print("\n  Body (Turtle):")
     print(resp_body)
 else:
     print("  Skipped — no created URL from previous step")
@@ -356,13 +355,13 @@ print("STEP 7: N3 Patch — add a triple to the resource")
 print("=" * 60)
 
 if created_url and created_url != "N/A":
-    n3_patch = f"""@prefix solid: <http://www.w3.org/ns/solid/terms#>.
+    n3_patch = """@prefix solid: <http://www.w3.org/ns/solid/terms#>.
 @prefix pac: <http://pacific.dev/ontology#>.
 
 _:patch a solid:InsertDeletePatch;
-    solid:inserts {{
+    solid:inserts {
         <#interview-001> pac:resolution "Implement automated document verification via Pacific agent".
-    }}.
+    }.
 """
 
     dpop_patch = create_dpop_proof("PATCH", created_url, ath=ath)
@@ -409,7 +408,7 @@ _:patch a solid:InsertDeletePatch;
                 "Accept": "text/turtle",
             },
         )
-        print(f"\n  Updated resource:")
+        print("\n  Updated resource:")
         print(body2)
 else:
     print("  Skipped — no created URL")
@@ -451,7 +450,7 @@ if status == 401:
         )
 
 print(f"  Status: {status}")
-print(f"\n  ACL (Turtle):")
+print("\n  ACL (Turtle):")
 print(resp_body)
 print()
 

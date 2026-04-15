@@ -1,0 +1,1333 @@
+{
+  "title": "Solid Client Requirements Catalogue",
+  "version": "2.0.0",
+  "date": "2026-04-03",
+  "sources": [
+    "https://solidproject.org/TR/protocol (Solid Protocol v0.11)",
+    "https://solidproject.org/TR/oidc (Solid-OIDC)",
+    "https://solid.github.io/web-access-control-spec/ (WAC v1.0)",
+    "https://solid.github.io/webid-profile/ (WebID Profile)",
+    "https://solidproject.org/TR/notifications-protocol (Solid Notifications)"
+  ],
+  "requirements": [
+    {
+      "id": "SP-01",
+      "spec": "Solid Protocol",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Conform to HTTP Semantics (RFC 9110)",
+      "reason": "HTTP Semantics defines the meaning of methods, status codes, headers, and content negotiation. Without conformance, a client cannot reliably interpret server responses or construct valid requests. This is the foundational contract between every HTTP client and server. Conformance also governs redirect handling discipline — a client that blindly follows 3xx redirects can be tricked into sending credentials (Authorization headers, cookies) to an attacker-controlled origin. RFC 9110 Section 15.4 requires clients to strip credentials on cross-origin redirects.",
+      "validation": {
+        "approach": "Automated HTTP interaction tests against a live CSS instance.",
+        "tests": [
+          "For each method (GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS), issue a well-formed request and assert the response status code and headers match RFC 9110 expectations.",
+          "Issue a request that triggers a 3xx redirect to a different origin. Assert the client does NOT forward Authorization headers or cookies to the redirected origin.",
+          "Issue a request that triggers a same-origin redirect. Assert credentials are preserved.",
+          "Send requests with deliberately malformed headers and assert the client either rejects them before sending or handles error responses gracefully.",
+          "Verify the client uses correct method semantics: GET is safe and idempotent, PUT is idempotent, POST is neither."
+        ]
+      }
+    },
+    {
+      "id": "SP-02",
+      "spec": "Solid Protocol",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Conform to HTTP/1.1 (RFC 9112)",
+      "reason": "HTTP/1.1 is the minimum transport protocol all Solid servers support. Mandating conformance ensures every client can communicate with every server regardless of whether newer protocol versions are available.",
+      "validation": {
+        "approach": "Transport-level interoperability tests.",
+        "tests": [
+          "Connect to a CSS instance configured for HTTP/1.1 only and complete a full CRUD cycle (create container, create resource, read, update via PATCH, delete).",
+          "Verify the client sends a valid Host header on every request.",
+          "Verify the client handles chunked transfer encoding correctly for large RDF payloads.",
+          "Verify the client handles persistent connections and Connection: close appropriately."
+        ]
+      }
+    },
+    {
+      "id": "SP-03",
+      "spec": "Solid Protocol",
+      "section": "2.2",
+      "level": "MAY",
+      "requirement": "Conform to HTTP Caching (RFC 9111)",
+      "reason": "Caching reduces latency and server load when resources are read frequently. However, incorrect caching of authenticated responses is a security vulnerability — if a cached response from User A is served to User B, it constitutes a data leak. Conformance to RFC 9111 includes respecting Cache-Control directives, Vary headers (particularly Vary: Authorization), and the rule that responses to requests with Authorization headers must not be cached unless explicitly permitted by Cache-Control: public or s-maxage. A client that does not cache is safe; a client that caches incorrectly is dangerous.",
+      "validation": {
+        "approach": "Cache correctness tests with multi-user scenarios.",
+        "tests": [
+          "Authenticate as User A, read a private resource, then authenticate as User B and read the same resource. Assert User B receives their own response, not a cached copy of User A's.",
+          "Read a resource with Cache-Control: no-store. Assert the client does not serve it from cache on subsequent requests.",
+          "Read a resource with Cache-Control: max-age=60. Assert the client serves from cache within the window and revalidates after.",
+          "Read a resource with Vary: Authorization. Assert the client caches separate entries per Authorization header value.",
+          "Read a resource that returns an ETag. Reread and assert the client sends If-None-Match for conditional revalidation."
+        ]
+      }
+    },
+    {
+      "id": "SP-04",
+      "spec": "Solid Protocol",
+      "section": "2.2",
+      "level": "MAY",
+      "requirement": "Conform to HTTP/2 (RFC 9113)",
+      "reason": "HTTP/2 offers multiplexed streams and header compression, improving throughput when a client makes many concurrent requests to the same pod. It is optional because HTTP/1.1 is sufficient for correctness.",
+      "validation": {
+        "approach": "Transport upgrade and multiplexing test.",
+        "tests": [
+          "Connect to a CSS instance that supports HTTP/2. Assert the client successfully negotiates h2 via ALPN during the TLS handshake.",
+          "Issue 10 concurrent GET requests over a single HTTP/2 connection. Assert all responses arrive correctly without head-of-line blocking.",
+          "Verify the client falls back to HTTP/1.1 gracefully when the server does not support HTTP/2."
+        ]
+      }
+    },
+    {
+      "id": "SP-05",
+      "spec": "Solid Protocol",
+      "section": "2.2",
+      "level": "MAY",
+      "requirement": "Repeat requests with different credentials when receiving 403 or 404 responses",
+      "reason": "Solid servers return 403 or 404 to unauthenticated requests for resources that exist, to avoid leaking resource existence. Allowing credential retry lets clients transparently recover by re-authenticating rather than surfacing a confusing error. Security concern: a malicious server could return 403 on every request to force the client into a credential-retry loop, causing the client to present credentials to resources the user did not intend to authenticate against. The client must limit retry attempts (at most one retry per request), only retry against the same origin, and never send credentials to a different origin during retry.",
+      "validation": {
+        "approach": "Controlled retry behaviour tests with a mock server.",
+        "tests": [
+          "Issue an unauthenticated GET to a protected resource. Assert the client receives 403/404, retries with credentials, and succeeds.",
+          "Configure a mock server that returns 403 indefinitely. Assert the client retries at most once and then surfaces the error, not entering an infinite loop.",
+          "Issue a request that returns 403 with a Location header pointing to a different origin. Assert the client does NOT send credentials to the different origin on retry.",
+          "Issue a request that returns 404. Assert the client distinguishes between 'resource does not exist' and 'resource exists but is not readable' by retrying with credentials before concluding absence."
+        ]
+      }
+    },
+    {
+      "id": "SP-06",
+      "spec": "Solid Protocol",
+      "section": "5.3",
+      "level": "MUST",
+      "requirement": "Include Content-Type header in PUT, POST, and PATCH requests containing content",
+      "reason": "The server must know the media type of the request body to parse it correctly. Without Content-Type, a server that guesses the type might select the wrong parser — this is not just silent data corruption but a potential injection vector if the body is interpreted as an executable or scripted format (e.g., a Turtle document processed as HTML could enable XSS if served back to a browser). Explicit Content-Type eliminates parser confusion attacks.",
+      "validation": {
+        "approach": "Content-Type enforcement tests.",
+        "tests": [
+          "PUT a Turtle resource with Content-Type: text/turtle. Assert success (201).",
+          "PUT a Turtle resource with no Content-Type header. Assert the server rejects it (400 or 415) and the client does not allow sending without Content-Type.",
+          "PUT a resource with a mismatched Content-Type (e.g., body is Turtle but header says application/json). Assert the server rejects or the client validates consistency.",
+          "POST to a container with Content-Type: text/turtle and a valid Turtle body. Assert resource creation succeeds.",
+          "PATCH with Content-Type: text/n3 and a valid N3 Patch. Assert success."
+        ]
+      }
+    },
+    {
+      "id": "SP-07",
+      "spec": "Solid Protocol",
+      "section": "5.3",
+      "level": "SHOULD",
+      "requirement": "Use If-None-Match: * header to prevent inadvertent modification of existing resources",
+      "reason": "When creating a new resource via PUT, the client may not know whether the URI is already occupied. If-None-Match: * causes the server to reject the request if a resource already exists, preventing accidental overwrites in concurrent or multi-client environments. Without this header, an attacker who races the client could replace a resource between the client's existence check (GET) and creation (PUT) — a TOCTOU (time-of-check-time-of-use) vulnerability. If-None-Match: * makes the check-and-create atomic from the server's perspective.",
+      "validation": {
+        "approach": "Concurrent creation race tests.",
+        "tests": [
+          "PUT a new resource with If-None-Match: *. Assert 201 Created.",
+          "PUT to the same URI again with If-None-Match: *. Assert 412 Precondition Failed.",
+          "In two concurrent clients, race two PUTs to the same URI both with If-None-Match: *. Assert exactly one succeeds (201) and the other receives 412.",
+          "PUT to an existing resource without If-None-Match: *. Assert the server allows overwrite (to verify the header is actually what prevents it)."
+        ]
+      }
+    },
+    {
+      "id": "SP-08",
+      "spec": "Solid Protocol",
+      "section": "5.3",
+      "level": "MAY",
+      "requirement": "Use If-Match header with ETag for conditional updates",
+      "reason": "ETags enable optimistic concurrency control. A client that reads a resource, modifies it, and writes it back can use If-Match to ensure no one else changed the resource in the interim. This prevents lost-update races without locking.",
+      "validation": {
+        "approach": "Optimistic concurrency tests.",
+        "tests": [
+          "GET a resource and capture the ETag. PUT an update with If-Match: <captured ETag>. Assert success.",
+          "GET a resource, capture the ETag, modify the resource via a second client, then PUT with If-Match: <stale ETag>. Assert 412 Precondition Failed.",
+          "GET a resource, capture the ETag, PUT with If-Match: <captured ETag>. GET again and assert the ETag has changed.",
+          "PUT with If-Match and a fabricated ETag value. Assert 412."
+        ]
+      }
+    },
+    {
+      "id": "SP-09",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Construct N3 Patch documents conforming to the solid:InsertDeletePatch constraints when patching RDF resources",
+      "reason": "N3 Patch is the only patch format every Solid server is required to accept. Conformance to its structural constraints (single patch subject, no blank nodes in inserts/deletes, variables bound via solid:where) ensures patches are unambiguous and deterministically applicable.",
+      "validation": {
+        "approach": "N3 Patch structural conformance tests.",
+        "tests": [
+          "Send a well-formed N3 Patch with solid:inserts, solid:deletes, and solid:where. Assert 200 or 204 success.",
+          "Send an N3 Patch with two patch subjects. Assert 422 Unprocessable Entity.",
+          "Send an N3 Patch with blank nodes in solid:inserts. Assert 422.",
+          "Send an N3 Patch with blank nodes in solid:deletes. Assert 422.",
+          "Send an N3 Patch with an unbound variable in solid:inserts. Assert 422.",
+          "Send an N3 Patch with only solid:inserts (no where/deletes). Assert success.",
+          "Send an N3 Patch with only solid:deletes and matching solid:where. Assert success."
+        ]
+      }
+    },
+    {
+      "id": "SP-10",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Send PATCH requests with Content-Type text/n3",
+      "reason": "The server uses Content-Type to select the correct patch parser. N3 Patch documents use Notation3 syntax which differs from Turtle. Incorrect media type would cause the server to reject the patch or misparse it.",
+      "validation": {
+        "approach": "Content-Type enforcement for PATCH.",
+        "tests": [
+          "PATCH with Content-Type: text/n3 and a valid N3 Patch body. Assert success.",
+          "PATCH with Content-Type: text/turtle and an N3 Patch body. Assert the server rejects it (415 or 400).",
+          "PATCH with no Content-Type header. Assert rejection.",
+          "Verify the client library always sets Content-Type: text/n3 for patch operations without requiring the caller to specify it."
+        ]
+      }
+    },
+    {
+      "id": "SP-11",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Ensure variables in solid:inserts and solid:deletes formulae appear in the solid:where formula",
+      "reason": "Variables are bound by matching the solid:where clause against existing triples. Unbound variables in inserts or deletes are not merely meaningless — they are dangerous. An unbound variable in solid:deletes could be interpreted as a wildcard by a buggy server implementation, potentially matching and deleting unintended triples. An unbound variable in solid:inserts would produce triples with undefined values. This constraint is a safety invariant that makes patches deterministic and prevents data destruction through ambiguity.",
+      "validation": {
+        "approach": "Variable binding validation tests.",
+        "tests": [
+          "Create a resource with known triples. Send an N3 Patch with a variable in solid:deletes that is properly bound in solid:where. Assert only the matched triple is deleted.",
+          "Send an N3 Patch with a variable in solid:inserts that is not present in solid:where. Assert 422.",
+          "Send an N3 Patch with a variable in solid:deletes that is not present in solid:where. Assert 422.",
+          "Send an N3 Patch where solid:where binds a variable but the variable is not used in inserts or deletes. Assert success (unused bindings are harmless).",
+          "Send an N3 Patch where solid:where matches multiple triples. Assert the patch applies to all matches (or returns 409 per SP-13)."
+        ]
+      }
+    },
+    {
+      "id": "SP-12",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Ensure neither solid:inserts nor solid:deletes formulae contain blank nodes",
+      "reason": "Blank nodes have no stable identity across serializations. If a delete formula contained a blank node, the server could not reliably match it to an existing triple, potentially matching the wrong triple and deleting unintended data. If an insert formula contained a blank node, repeated application of the same patch would create duplicate triples (since each application generates a new blank node identity). Forbidding them eliminates both data destruction and data duplication through ambiguity.",
+      "validation": {
+        "approach": "Blank node rejection tests.",
+        "tests": [
+          "Send an N3 Patch with a blank node in solid:inserts. Assert 422.",
+          "Send an N3 Patch with a blank node in solid:deletes. Assert 422.",
+          "Send an N3 Patch with a blank node in solid:where (where blank nodes may be permissible for matching). Verify the server's behaviour matches the spec.",
+          "Send an N3 Patch with only named nodes in all formulae. Assert success."
+        ]
+      }
+    },
+    {
+      "id": "SP-13",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Handle 409 Conflict responses when patch conditions match zero or multiple times, or when deletions reference nonexistent triples",
+      "reason": "A 409 signals that the resource state does not match the patch's preconditions. The client must recognise this as a concurrency or staleness error and either re-read the resource and rebuild the patch, or surface the conflict to the user.",
+      "validation": {
+        "approach": "Conflict detection and recovery tests.",
+        "tests": [
+          "Create a resource with known triples. Send an N3 Patch whose solid:where matches exactly one triple. Assert success.",
+          "Send an N3 Patch whose solid:where matches zero triples. Assert 409 Conflict.",
+          "Create a resource where solid:where would match multiple triples. Send a patch. Assert 409 if the server requires unique matches.",
+          "Send an N3 Patch that deletes a triple that does not exist. Assert 409.",
+          "After receiving 409, re-read the resource, rebuild the patch against current state, and resubmit. Assert success on the rebuilt patch."
+        ]
+      }
+    },
+    {
+      "id": "SP-14",
+      "spec": "Solid Protocol",
+      "section": "5.3.1",
+      "level": "MUST",
+      "requirement": "Handle 422 Unprocessable Entity responses when patch documents violate structural constraints",
+      "reason": "A 422 means the patch is syntactically valid N3 but violates InsertDeletePatch rules (e.g. multiple patch subjects, blank nodes). The client should treat this as a bug in patch construction, not a transient error.",
+      "validation": {
+        "approach": "Error classification tests.",
+        "tests": [
+          "Send each known structural violation (multiple subjects, blank nodes, unbound variables). Assert 422 for each.",
+          "Verify the client does NOT retry 422 responses (unlike 409 which may warrant retry after re-read).",
+          "Verify the client surfaces 422 as a developer-facing error with the response body, not a generic 'server error'."
+        ]
+      }
+    },
+    {
+      "id": "SP-15",
+      "spec": "Solid Protocol",
+      "section": "5.5",
+      "level": "MUST",
+      "requirement": "Be able to request RDF representations using Accept: text/turtle",
+      "reason": "Every Solid server must serve Turtle representations of RDF resources. This is the universal baseline format. A client that cannot request or parse Turtle cannot read any Solid pod.",
+      "validation": {
+        "approach": "Content negotiation tests.",
+        "tests": [
+          "GET an RDF resource with Accept: text/turtle. Assert 200 and Content-Type: text/turtle in the response.",
+          "Parse the response body as Turtle and assert it produces valid RDF triples.",
+          "GET the same resource with Accept: application/ld+json. Assert the server returns JSON-LD. Parse both representations and assert they contain equivalent triples.",
+          "GET a non-RDF resource (e.g., an image) with Accept: text/turtle. Assert the server returns the resource in its native format (not Turtle)."
+        ]
+      }
+    },
+    {
+      "id": "SP-16",
+      "spec": "Solid Protocol",
+      "section": "5.5",
+      "level": "MUST",
+      "requirement": "Be able to request RDF representations using Accept: application/ld+json",
+      "reason": "JSON-LD is the second mandatory representation format. While Turtle is the primary format for most RDF tooling, JSON-LD is essential for JavaScript ecosystems and Solid Notifications, which use JSON-LD exclusively for their data model.",
+      "validation": {
+        "approach": "JSON-LD content negotiation tests.",
+        "tests": [
+          "GET an RDF resource with Accept: application/ld+json. Assert 200 and Content-Type: application/ld+json.",
+          "Parse the response body as JSON-LD and assert valid RDF triples.",
+          "Verify the JSON-LD @context is resolvable and produces correct term definitions.",
+          "Round-trip: write a resource as Turtle, read it as JSON-LD, parse both, and assert triple equivalence."
+        ]
+      }
+    },
+    {
+      "id": "SP-17",
+      "spec": "Solid Protocol",
+      "section": "3",
+      "level": "SHOULD",
+      "requirement": "Discover storage by traversing URI path hierarchy and checking Link headers for pim:Storage type",
+      "reason": "A client given only a resource URL needs to find the root of the pod that contains it. Walking up the path and checking for the storage Link header is the standard discovery mechanism, enabling operations like listing the pod root or finding the ACL root. Security concern: a compromised or malicious server could advertise a fake storage root via Link headers, redirecting the client to an attacker-controlled pod. Discovered storage URLs must be validated against the expected origin — the storage root must be on the same origin as the resource being accessed, or explicitly trusted by the user.",
+      "validation": {
+        "approach": "Storage discovery traversal and origin validation tests.",
+        "tests": [
+          "Given a resource URL at /pod/container/resource, walk up the path hierarchy. Assert the client discovers the storage root at /pod/ via Link: <...>; rel='type'; ...",
+          "Verify the client stops traversal at the storage root and does not continue to the server root.",
+          "Configure a mock server that returns a Link header advertising a storage root on a different origin. Assert the client rejects or warns about cross-origin storage discovery.",
+          "Verify the client caches the discovered storage root to avoid repeated traversal.",
+          "Test with a deeply nested resource (5+ levels). Assert traversal completes correctly."
+        ]
+      }
+    },
+    {
+      "id": "SP-18",
+      "spec": "Solid Protocol",
+      "section": "3",
+      "level": "SHOULD",
+      "requirement": "Discover storage by making GET request and checking for pim:storage relation in the RDF representation",
+      "reason": "Some resources (like WebID profiles) contain explicit pim:storage triples pointing to pod roots. This is faster than hierarchical traversal and works when the resource and storage are on different origins. Security concern: a malicious WebID profile could contain a pim:storage triple pointing to an attacker-controlled server. If the client follows this without validation, all subsequent pod operations go to the attacker. The client should verify that the discovered storage URL uses HTTPS and, for server-side clients, should validate the URL against an allowlist or verify it does not resolve to a private/internal network address (SSRF prevention).",
+      "validation": {
+        "approach": "RDF-based storage discovery with SSRF prevention tests.",
+        "tests": [
+          "Create a WebID profile with a pim:storage triple. Fetch the profile and assert the client discovers the storage URL.",
+          "Create a WebID profile with pim:storage pointing to http://localhost:3000/. Assert a server-side client rejects or flags the loopback address.",
+          "Create a WebID profile with pim:storage pointing to http://169.254.169.254/ (cloud metadata). Assert rejection.",
+          "Create a WebID profile with pim:storage pointing to a private IP range (10.x, 172.16.x, 192.168.x). Assert rejection for server-side clients.",
+          "Create a WebID profile with pim:storage on a different origin (legitimate cross-origin). Assert the client follows it but validates TLS."
+        ]
+      }
+    },
+    {
+      "id": "SP-19",
+      "spec": "Solid Protocol",
+      "section": "6",
+      "level": "MUST",
+      "requirement": "Conform to Linked Data Notifications (LDN) specification by implementing Sender or Consumer",
+      "reason": "LDN is the mechanism Solid uses for inter-pod communication. Without it, a client cannot send access requests, share notifications, or participate in collaborative workflows between pods.",
+      "validation": {
+        "approach": "LDN Sender and Consumer conformance tests.",
+        "tests": [
+          "As a Sender: POST a valid JSON-LD notification to a known Inbox URL. Assert 201 Created and a Location header pointing to the created notification.",
+          "As a Consumer: GET an Inbox URL. Assert 200 and a list of notification URLs in the response.",
+          "As a Consumer: GET an individual notification from the Inbox. Assert valid JSON-LD content.",
+          "Verify the Sender sets Content-Type: application/ld+json on notification POSTs.",
+          "Verify the Consumer can handle an empty Inbox (no notifications)."
+        ]
+      }
+    },
+    {
+      "id": "SP-20",
+      "spec": "Solid Protocol",
+      "section": "6",
+      "level": "MUST",
+      "requirement": "Discover the location of a resource's Inbox",
+      "reason": "The Inbox URL is not predictable — it is advertised via the ldp:inbox Link header or RDF triple. Clients must discover it dynamically to send or retrieve notifications for a resource or agent. Security concern: a malicious WebID profile or resource could advertise an Inbox on an attacker-controlled server. If the client sends notifications (which may contain sensitive data such as access requests with the sender's WebID, requested resource URLs, and justification text) to the discovered Inbox without verifying its origin relationship, the data is exfiltrated to the attacker. Server-side clients must validate discovered Inbox URLs against SSRF allowlists.",
+      "validation": {
+        "approach": "Inbox discovery and trust validation tests.",
+        "tests": [
+          "GET a resource and assert the client discovers the Inbox via Link: <...>; rel='http://www.w3.org/ns/ldp#inbox'.",
+          "GET a WebID profile and assert the client discovers the Inbox via the ldp:inbox RDF triple.",
+          "Configure a resource with an ldp:inbox pointing to a different origin. Assert the client validates or warns.",
+          "Configure a resource with an ldp:inbox pointing to a loopback address. Assert server-side clients reject it.",
+          "POST a notification to the discovered Inbox and assert success."
+        ]
+      }
+    },
+    {
+      "id": "SP-21",
+      "spec": "Solid Protocol",
+      "section": "6",
+      "level": "MUST",
+      "requirement": "Send notifications to Inbox or retrieve Inbox contents",
+      "reason": "This is the operational requirement of LDN. A Sender POSTs JSON-LD notifications to the Inbox; a Consumer GETs the Inbox to list them. Security concern: notifications may contain sensitive data (resource URLs, WebIDs, access request details). Sending this data to an untrusted Inbox (see SP-20) constitutes data exfiltration. Additionally, when consuming an Inbox, the client must treat notification content as untrusted input — a malicious notification could contain crafted URIs designed to trigger SSRF or XSS when the client processes or displays them.",
+      "validation": {
+        "approach": "Notification send/receive with content validation tests.",
+        "tests": [
+          "POST a notification to a legitimate Inbox. Assert 201.",
+          "GET the Inbox, retrieve the notification, and assert it matches what was sent.",
+          "POST a notification containing a script tag in a string literal. Assert the consuming client does not execute it (XSS prevention).",
+          "POST a notification with a URI pointing to an internal address. Assert the consuming client does not dereference it without validation.",
+          "Verify notifications are sent over TLS."
+        ]
+      }
+    },
+    {
+      "id": "SP-22",
+      "spec": "Solid Protocol",
+      "section": "11.1",
+      "level": "MUST",
+      "requirement": "Conform to Web Access Control (WAC) specification when the server uses WAC",
+      "reason": "WAC governs who can read, write, and control resources. A client that does not understand WAC risks constructing incorrect permission grants — for example, confusing acl:Write with acl:Append and accidentally granting delete permissions when only additive access was intended. Worse, a client that silently ignores WAC errors may leave resources with no effective ACL, defaulting to the container's permissions which may be more permissive than intended. The security risk is privilege escalation through misunderstanding, not merely inability to manage permissions.",
+      "validation": {
+        "approach": "Full WAC lifecycle tests using the solid-contrib/web-access-control-tests suite.",
+        "tests": [
+          "Create a resource, set an ACL granting acl:Read to a specific agent. Authenticate as that agent and assert GET succeeds. Authenticate as a different agent and assert 403.",
+          "Grant acl:Append (not acl:Write) to an agent. Assert they can POST but cannot PUT or DELETE.",
+          "Grant acl:Write to an agent. Assert they can PUT, POST, DELETE, and PATCH.",
+          "Grant acl:Control to an agent. Assert they can read and modify the ACL resource itself.",
+          "Construct an ACL with acl:Write where acl:Append was intended. Assert the test demonstrates that Write permits DELETE (proving the distinction matters).",
+          "Remove all ACL entries for a resource. Assert the server falls back to the container's default ACL, and verify the effective permissions match expectations."
+        ]
+      }
+    },
+    {
+      "id": "SP-23",
+      "spec": "Solid Protocol",
+      "section": "11.2",
+      "level": "MUST",
+      "requirement": "Conform to Access Control Policy (ACP) specification when the server uses ACP",
+      "reason": "ACP is an alternative authorization system to WAC used by some Solid servers (notably Inrupt's ESS). While ACP evaluation is server-side, a client that manages permissions must understand ACP to construct correct policies. If a client constructs a WAC ACL on an ACP-only server, the permissions are silently ignored — the resource may be left with no effective client-managed authorization, relying solely on server defaults which may be more permissive than intended. The security risk is authorization bypass when the client and server disagree on the authorization scheme. The client must detect which scheme the server uses (via Link headers or .well-known metadata) before constructing authorization rules.",
+      "validation": {
+        "approach": "Authorization scheme detection and cross-scheme safety tests.",
+        "tests": [
+          "Query a server for its authorization scheme (WAC vs ACP). Assert the client correctly identifies it.",
+          "On an ACP server, attempt to PUT a WAC ACL document. Assert the client detects the mismatch before sending, or that the server rejects it and the client surfaces a clear error.",
+          "On a WAC server, construct and apply a WAC ACL. Assert it takes effect.",
+          "On an ACP server, construct and apply an ACP policy. Assert it takes effect.",
+          "Verify the client never assumes WAC by default without checking."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-01",
+      "spec": "Solid-OIDC",
+      "section": "5",
+      "level": "SHOULD",
+      "requirement": "Use a URI as client identifier that can be dereferenced as a Client ID Document",
+      "reason": "Dereferenceable client identifiers let servers verify client identity without prior registration, enabling decentralised client discovery. Security concern: dereferenceable client identifiers can be modified after deployment. An attacker who compromises the hosting of a Client ID Document can change redirect_uris to point to their server, enabling token theft for all users of that client. This is a supply-chain risk — the security of every user of the client depends on the integrity of the Client ID Document's hosting. The document should be served from infrastructure with strong access controls, and servers should consider caching policies that limit the window of exposure.",
+      "validation": {
+        "approach": "Client ID Document integrity and dereference tests.",
+        "tests": [
+          "Host a Client ID Document at a URI. Initiate an auth flow and assert the server successfully dereferences and validates it.",
+          "Modify the Client ID Document to change redirect_uris after a user has started an auth flow. Assert the server rejects the callback if the redirect_uri no longer matches.",
+          "Host the Client ID Document on HTTP (not HTTPS). Assert the server rejects it.",
+          "Host the Client ID Document with permissive CORS headers. Assert the document is still valid (CORS does not affect server-side dereferencing).",
+          "Take down the Client ID Document hosting. Assert the auth flow fails with a clear error, not a silent fallback."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-02",
+      "spec": "Solid-OIDC",
+      "section": "5.1",
+      "level": "MUST",
+      "requirement": "Dereferenceable Client ID Document must be served as application/ld+json",
+      "reason": "JSON-LD is the canonical format for Client ID Documents because Solid-OIDC is built on OIDC, which uses JSON. Using a single format prevents ambiguity and ensures all servers can parse client metadata consistently.",
+      "validation": {
+        "approach": "Content-Type enforcement tests.",
+        "tests": [
+          "Serve a Client ID Document with Content-Type: application/ld+json. Assert the server accepts it.",
+          "Serve a Client ID Document with Content-Type: text/turtle. Assert the server rejects it.",
+          "Serve a Client ID Document with Content-Type: application/json (not ld+json). Assert the server rejects it or treats it as non-canonical.",
+          "Verify the JSON-LD document is valid JSON and contains the required fields (client_id, redirect_uris, client_name)."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-03",
+      "spec": "Solid-OIDC",
+      "section": "5.1",
+      "level": "MUST",
+      "requirement": "Supply request parameters matching values declared in the Client ID Document",
+      "reason": "The Client ID Document is a trust anchor. If the client's actual redirect_uri or grant_type doesn't match what the document declares, the server must reject the request. This prevents a malicious actor from reusing a legitimate client identifier with tampered parameters.",
+      "validation": {
+        "approach": "Parameter tampering tests.",
+        "tests": [
+          "Initiate an auth flow with a redirect_uri that matches the Client ID Document. Assert success.",
+          "Initiate an auth flow with a redirect_uri NOT in the Client ID Document. Assert the server rejects the request.",
+          "Initiate an auth flow with a grant_type not declared in the document. Assert rejection.",
+          "Modify the auth request to add extra scopes not in the document. Assert the server either rejects or ignores the extra scopes.",
+          "Use a valid client_id but tamper with the client_name. Assert the server uses the name from the document, not the request."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-04",
+      "spec": "Solid-OIDC",
+      "section": "5.1",
+      "level": "MUST",
+      "requirement": "Include redirect_uri in the Client ID Document's redirect_uris list",
+      "reason": "Open redirect is a classic OAuth attack vector. By requiring the redirect_uri to be pre-declared, the server can reject authorization responses to unexpected endpoints, preventing token interception. The comparison must be exact-match (not prefix-match), as prefix matching enables path traversal redirects (e.g., https://legitimate.com/callback/../attacker-page).",
+      "validation": {
+        "approach": "Redirect URI validation tests covering known bypass techniques.",
+        "tests": [
+          "Register redirect_uri https://app.example.com/callback. Use exactly that URI. Assert success.",
+          "Use https://app.example.com/callback/ (trailing slash). Assert rejection (exact match).",
+          "Use https://app.example.com/callback?extra=param. Assert rejection.",
+          "Use https://app.example.com/callback#fragment. Assert rejection.",
+          "Use https://app.example.com/callback/../admin. Assert rejection (path traversal).",
+          "Use https://app.example.com/callback;https://attacker.com. Assert rejection (parameter injection).",
+          "Use https://evil.example.com/callback (different subdomain). Assert rejection.",
+          "Use http://app.example.com/callback (HTTP instead of HTTPS). Assert rejection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-05",
+      "spec": "Solid-OIDC",
+      "section": "5.2",
+      "level": "MUST",
+      "requirement": "If not using a dereferenceable identifier, present a client identifier registered via OIDC dynamic or static registration",
+      "reason": "Every client must be identifiable. If the client does not publish a dereferenceable Client ID Document, it must fall back to traditional OIDC registration so the server has a verified record of the client's identity and capabilities.",
+      "validation": {
+        "approach": "Registration fallback tests.",
+        "tests": [
+          "Register a client via OIDC dynamic registration (POST to the registration endpoint). Assert the server returns a client_id and client_secret.",
+          "Use the dynamically registered credentials to complete an auth flow. Assert success.",
+          "Attempt an auth flow with neither a dereferenceable client ID nor a registered client. Assert the server rejects the request.",
+          "Attempt an auth flow with an unregistered client_id (random string). Assert rejection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-06",
+      "spec": "Solid-OIDC",
+      "section": "8",
+      "level": "MUST",
+      "requirement": "Send either (1) Client ID + Secret + valid DPoP Proof, or (2) Dereferenceable Client Identifier + Client ID Document + valid DPoP Proof when requesting tokens",
+      "reason": "This is the authentication handshake. DPoP binds the token to a key pair the client controls, preventing token theft. The two paths accommodate both registered (secret-based) and dereferenceable (document-based) clients.",
+      "validation": {
+        "approach": "Token request authentication tests for both paths.",
+        "tests": [
+          "Path 1: Send token request with client_id, client_secret, authorization code, and a valid DPoP proof. Assert a DPoP-bound access token is returned.",
+          "Path 2: Send token request with a dereferenceable client_id, authorization code, and a valid DPoP proof. Assert a DPoP-bound access token is returned.",
+          "Send a token request with a valid DPoP proof but no client authentication. Assert rejection.",
+          "Send a token request with client authentication but no DPoP proof. Assert the server either rejects or returns a bearer token (not DPoP-bound).",
+          "Send a token request with an invalid DPoP proof (wrong signature). Assert rejection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-07",
+      "spec": "Solid-OIDC",
+      "section": "8.1",
+      "level": "MUST",
+      "requirement": "Send a DPoP proof JWT valid per OAuth 2.0 DPoP (RFC 9449) Section 5 when requesting a DPoP-bound ID Token",
+      "reason": "DPoP proofs demonstrate that the client holds the private key corresponding to the public key in the proof. Without a valid proof, the server cannot bind the token, and token theft becomes exploitable. Specific attacks DPoP prevents: token replay (reusing an intercepted token from a different session), token export (stealing a token from one device and using it on another), and man-in-the-middle token interception even over TLS if a proxy terminates the connection. The proof must include htm (HTTP method) and htu (HTTP URI) claims that bind it to a specific request, and a jti (unique identifier) that prevents proof replay.",
+      "validation": {
+        "approach": "DPoP proof structure and binding validation tests.",
+        "tests": [
+          "Generate a DPoP proof with all required fields (typ, alg, jwk, jti, htm, htu, iat). Assert the server accepts it.",
+          "Generate a DPoP proof with alg: none. Assert the server rejects it.",
+          "Generate a DPoP proof with a symmetric algorithm (HS256). Assert the server rejects it.",
+          "Generate a DPoP proof where htm does not match the actual HTTP method. Assert rejection.",
+          "Generate a DPoP proof where htu does not match the request URI. Assert rejection.",
+          "Generate a DPoP proof with an iat in the far future. Assert rejection.",
+          "Generate a DPoP proof with an iat in the far past. Assert rejection.",
+          "Generate a DPoP proof and include a private key in the jwk header. Assert the server rejects it (jwk must contain only the public key).",
+          "Generate two DPoP proofs with the same jti. Assert the server rejects the second (replay prevention)."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-08",
+      "spec": "Solid-OIDC",
+      "section": "9.3",
+      "level": "MUST",
+      "requirement": "Present a valid DPoP Proof on every request when using a DPoP-bound access token",
+      "reason": "Each request must prove possession of the DPoP key. This is what makes DPoP superior to bearer tokens — even if an attacker intercepts the access token, they cannot use it without the private key. Critically, each proof must include htm (HTTP method) and htu (HTTP URI) claims binding the proof to that specific request. Without per-request binding, a DPoP proof generated for GET /public could be replayed for DELETE /private. The server must also verify that the proof's jwk thumbprint matches the cnf.jkt claim in the access token, ensuring the proof and token were issued to the same key pair.",
+      "validation": {
+        "approach": "Per-request DPoP binding and cross-request replay tests.",
+        "tests": [
+          "Obtain a DPoP-bound access token. Send a GET request with a valid DPoP proof (htm=GET, htu=<resource>). Assert success.",
+          "Reuse the same DPoP proof for a second GET to the same resource. Assert the server rejects it (jti replay).",
+          "Use a DPoP proof generated for GET /resource-a on a request to GET /resource-b. Assert rejection (htu mismatch).",
+          "Use a DPoP proof generated for GET on a DELETE request to the same resource. Assert rejection (htm mismatch).",
+          "Use a DPoP proof signed with a different key pair than the one bound to the access token. Assert rejection (jwk thumbprint mismatch with cnf.jkt).",
+          "Send a request with a DPoP-bound access token but no DPoP proof header. Assert 401 with a DPoP challenge.",
+          "Send a request with a bearer-style Authorization header using a DPoP-bound token. Assert rejection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-09",
+      "spec": "Solid-OIDC",
+      "section": "8.1.1",
+      "level": "MUST",
+      "requirement": "Validate ID Token per OIDC Core Section 3.1.3.7",
+      "reason": "ID Token validation confirms the token was issued by the expected issuer, is intended for this client, has not expired, and has not been tampered with. Skipping validation opens the client to token substitution attacks (an attacker replaces the ID token with one issued to a different client) and replay attacks (reusing an expired token). Validation must check: iss matches the expected issuer, aud contains this client's client_id, exp is in the future, iat is reasonable, and the signature verifies against the issuer's published keys. The aud check is critical — without it, a token issued for Client A can be accepted by Client B.",
+      "validation": {
+        "approach": "ID Token validation edge-case tests.",
+        "tests": [
+          "Receive a valid ID Token and assert all validation checks pass.",
+          "Present an ID Token with a different iss claim. Assert rejection.",
+          "Present an ID Token with a different aud claim (token issued for a different client). Assert rejection.",
+          "Present an expired ID Token (exp in the past). Assert rejection.",
+          "Present an ID Token with a tampered signature (modify one byte). Assert rejection.",
+          "Present an ID Token signed with alg: none. Assert rejection.",
+          "Present an ID Token with a valid signature but iat far in the future. Assert rejection.",
+          "Present an ID Token from the correct issuer but with a nonce that doesn't match the auth request. Assert rejection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-10",
+      "spec": "Solid-OIDC",
+      "section": "8.1.1",
+      "level": "MUST",
+      "requirement": "Perform OIDC Issuer Discovery by dereferencing the webid claim to obtain the WebID Profile",
+      "reason": "The webid claim in the ID Token tells the client who the user is. Dereferencing it to find the solid:oidcIssuer triple verifies that the issuer in the token is actually authorised to speak for that WebID, preventing issuer impersonation. This is the most critical security requirement in the Solid-OIDC spec — without it, any OIDC provider could claim to represent any WebID. The WebID must be fetched over TLS, and the response should not be cached indefinitely — a stale cache could retain an old solid:oidcIssuer after the user has migrated to a different issuer, allowing the old issuer to continue impersonating them.",
+      "validation": {
+        "approach": "Issuer discovery and trust verification tests.",
+        "tests": [
+          "Receive an ID Token with a webid claim. Dereference the WebID. Assert the profile contains solid:oidcIssuer matching the token's iss claim.",
+          "Present an ID Token where the webid profile's solid:oidcIssuer does NOT match the token's iss. Assert the client rejects the token.",
+          "Present an ID Token where the webid URI uses HTTP (not HTTPS). Assert rejection.",
+          "Present an ID Token where the webid URI returns a 404. Assert rejection with a clear error.",
+          "Present an ID Token where the webid URI returns a 500. Assert the client does not silently accept the token.",
+          "Cache a WebID profile, then change the solid:oidcIssuer. Assert the client revalidates within a reasonable TTL and picks up the change.",
+          "Present an ID Token where the webid profile lists multiple solid:oidcIssuer values. Assert the client accepts the token only if iss matches one of them."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-11",
+      "spec": "Solid-OIDC",
+      "section": "8.1.1",
+      "level": "MUST",
+      "requirement": "Follow OpenID Connect Discovery 1.0 to find signing keys (JWK) unless acquiring keys through other means",
+      "reason": "The client needs the issuer's public keys to verify the ID Token signature. OIDC Discovery provides a standard mechanism (/.well-known/openid-configuration → jwks_uri) so clients do not need to hardcode key material.",
+      "validation": {
+        "approach": "OIDC Discovery and key resolution tests.",
+        "tests": [
+          "Fetch /.well-known/openid-configuration from the issuer. Assert it contains jwks_uri.",
+          "Fetch the jwks_uri. Assert it returns a valid JWK Set with at least one signing key.",
+          "Verify the ID Token signature using a key from the JWK Set. Assert success.",
+          "Rotate the issuer's signing keys. Assert the client fetches the updated JWK Set and can verify tokens signed with the new key.",
+          "Present an ID Token signed with a key not in the current JWK Set. Assert rejection.",
+          "Verify the client fetches /.well-known/openid-configuration over HTTPS only."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-12",
+      "spec": "Solid-OIDC",
+      "section": "6.1",
+      "level": "MUST",
+      "requirement": "Check WebID Profile for solid:oidcIssuer statements to discover the authorised OIDC issuer",
+      "reason": "This is the trust root of Solid-OIDC. The WebID owner declares which issuers can authenticate them. Without this check, any OIDC provider could claim to represent any WebID, breaking the decentralised trust model. If the WebID profile lists multiple solid:oidcIssuer values, the client must verify the token's issuer is among them — not just check that the predicate exists. A token from an issuer not in the list must be rejected even if the token is otherwise valid.",
+      "validation": {
+        "approach": "Trust root verification tests.",
+        "tests": [
+          "Fetch a WebID profile with one solid:oidcIssuer. Assert the client extracts it correctly.",
+          "Fetch a WebID profile with multiple solid:oidcIssuer values. Assert the client accepts a token from any listed issuer.",
+          "Present a token from an issuer NOT in the WebID profile's solid:oidcIssuer list. Assert rejection.",
+          "Fetch a WebID profile with no solid:oidcIssuer. Assert the client cannot complete authentication (fails with a clear error).",
+          "Fetch a WebID profile where solid:oidcIssuer points to a non-OIDC server (no /.well-known/openid-configuration). Assert the client fails gracefully."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-13",
+      "spec": "Solid-OIDC",
+      "section": "6.1.1",
+      "level": "MAY",
+      "requirement": "Use Link Header values for OIDC issuer discovery as an optimisation, treating the RDF body as canonical",
+      "reason": "Parsing the full RDF body to extract solid:oidcIssuer requires an RDF parser. The Link header provides a lightweight shortcut for clients that only need the issuer URI. However, the RDF body is authoritative if they conflict. Security concern: a server could return a Link header pointing to a legitimate issuer while the RDF body points to a malicious one (or vice versa). If the client uses the Link header as a shortcut and never checks the body, the attacker wins by controlling the header. Clients that use this optimisation must either always verify against the body, or treat the Link header as untrusted and use it only to avoid parsing when the body is unavailable.",
+      "validation": {
+        "approach": "Link header vs RDF body conflict tests.",
+        "tests": [
+          "Serve a WebID profile where the Link header and RDF body agree on solid:oidcIssuer. Assert the client accepts either.",
+          "Serve a WebID profile where the Link header says Issuer A but the RDF body says Issuer B. Assert the client uses the RDF body (canonical).",
+          "Serve a WebID profile with a Link header but no solid:oidcIssuer in the RDF body. Assert the client either rejects or falls back to the Link header with a warning.",
+          "Serve a WebID profile with no Link header. Assert the client parses the RDF body successfully."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-14",
+      "spec": "Solid-OIDC",
+      "section": "3",
+      "level": "SHOULD",
+      "requirement": "Use Authorization Code Flow with PKCE per OAuth and OIDC best practices",
+      "reason": "Authorization Code Flow with PKCE is the most secure OAuth flow for user-facing clients. It prevents authorization code interception attacks and does not require a client secret, making it suitable for public clients like browser and mobile apps. PKCE is essential even for confidential clients (not just public clients) per OAuth 2.1 draft best practice, because authorization code injection attacks affect both — an attacker who obtains a valid authorization code from a different session can exchange it at the token endpoint without PKCE protection.",
+      "validation": {
+        "approach": "PKCE enforcement and code injection tests.",
+        "tests": [
+          "Initiate an auth flow with code_challenge and code_challenge_method=S256. Complete the flow with the correct code_verifier. Assert success.",
+          "Complete the flow with an incorrect code_verifier. Assert the token endpoint rejects it.",
+          "Initiate an auth flow without a code_challenge. Assert the server either rejects it or issues a warning (depending on server policy).",
+          "Obtain a valid authorization code from Session A. Attempt to exchange it in Session B (different PKCE verifier). Assert rejection.",
+          "Use code_challenge_method=plain. Assert the server accepts it but prefer S256 in client implementation.",
+          "Replay a previously used authorization code. Assert the server rejects it (codes are single-use)."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-15",
+      "spec": "Solid-OIDC",
+      "section": "7",
+      "level": "MUST",
+      "requirement": "Request the webid scope to access the End-User's webid claim",
+      "reason": "The webid claim is what links an OIDC identity to a Solid WebID. Without requesting this scope, the ID Token will not contain the claim, and the client cannot determine which pod owner the token represents.",
+      "validation": {
+        "approach": "Scope request and claim verification tests.",
+        "tests": [
+          "Request the webid scope in the auth flow. Assert the ID Token contains a webid claim.",
+          "Omit the webid scope. Assert the ID Token does NOT contain a webid claim.",
+          "Request the webid scope along with openid. Assert both scopes are honoured.",
+          "Verify the webid claim value is a valid HTTPS URI.",
+          "Dereference the webid claim value. Assert it returns a valid WebID Profile."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-16",
+      "spec": "Solid-OIDC",
+      "section": "11.1",
+      "level": "MUST",
+      "requirement": "Transmit tokens, client credentials, and user credentials only over TLS",
+      "reason": "Tokens and credentials sent in cleartext can be intercepted by any network observer. TLS is the minimum transport security required to prevent credential theft, session hijacking, and man-in-the-middle attacks. TLS means TLS 1.2 or later — earlier versions have known vulnerabilities (POODLE for SSLv3, BEAST for TLS 1.0). Additionally, certificate validation must not be disabled, which is a common developer shortcut that completely negates TLS by allowing any certificate (including attacker-issued ones) to be accepted.",
+      "validation": {
+        "approach": "Transport security enforcement tests.",
+        "tests": [
+          "Attempt a token request over HTTP (not HTTPS). Assert the client refuses to send it or the server rejects it.",
+          "Attempt a token request over HTTPS with TLS 1.1. Assert the connection is rejected.",
+          "Complete a token request over TLS 1.2. Assert success.",
+          "Complete a token request over TLS 1.3. Assert success.",
+          "Configure the client with certificate validation disabled. Assert a security warning or that the test framework flags it.",
+          "Present a self-signed certificate on the token endpoint. Assert the client rejects the connection.",
+          "Present an expired certificate. Assert the client rejects the connection.",
+          "Present a certificate with a mismatched hostname. Assert the client rejects the connection."
+        ]
+      }
+    },
+    {
+      "id": "OIDC-17",
+      "spec": "Solid-OIDC",
+      "section": "11.3",
+      "level": "SHOULD NOT",
+      "requirement": "Store client secrets in browser local storage",
+      "reason": "Browser local storage is accessible to any JavaScript running on the same origin, including XSS payloads. Client secrets stored there can be exfiltrated trivially. Secure storage mechanisms (e.g. OS keychain, server-side session) should be used instead. The full threat model for credential storage is: local storage is vulnerable to XSS; cookies without HttpOnly are also vulnerable to XSS; cookies with HttpOnly but without SameSite are vulnerable to CSRF; in-memory storage is safe from persistent attacks but lost on page refresh. For server-side clients like pacific-api, credentials must be stored in server memory or an encrypted store, never in client-accessible storage.",
+      "validation": {
+        "approach": "Credential storage audit tests.",
+        "tests": [
+          "Inspect the client's storage after authentication. Assert no client secrets exist in localStorage.",
+          "Inspect the client's storage after authentication. Assert no client secrets exist in sessionStorage.",
+          "If the client uses cookies, assert HttpOnly and Secure flags are set.",
+          "If the client uses cookies, assert SameSite is set to Lax or Strict.",
+          "Run a simulated XSS payload (inject script that reads localStorage/sessionStorage). Assert no credentials are accessible.",
+          "For server-side clients, assert credentials are stored in environment variables or encrypted at rest, not in plaintext config files."
+        ]
+      }
+    },
+    {
+      "id": "WAC-01",
+      "spec": "Web Access Control",
+      "section": "3.1",
+      "level": "MUST",
+      "requirement": "Discover ACL resources by making HTTP requests and checking the Link header with rel=acl",
+      "reason": "ACL resources are not at predictable URLs — they are advertised via Link headers. This indirection allows servers to store ACLs wherever they choose (including on different origins) without clients needing to know the storage layout.",
+      "validation": {
+        "approach": "ACL discovery tests.",
+        "tests": [
+          "GET a resource and assert the response contains a Link header with rel=acl.",
+          "Follow the ACL URL from the Link header. Assert it returns a Turtle document with acl:Authorization triples.",
+          "HEAD a resource and assert the Link: rel=acl header is also present (not just on GET).",
+          "Verify the client uses the discovered ACL URL for all permission operations, not a constructed one."
+        ]
+      }
+    },
+    {
+      "id": "WAC-02",
+      "spec": "Web Access Control",
+      "section": "3.1",
+      "level": "MUST NOT",
+      "requirement": "Derive ACL resource URIs through string operations on resource URIs",
+      "reason": "Constructing ACL URLs by string manipulation (e.g. appending .acl) couples the client to a specific server's URL scheme. Different servers use different ACL URL patterns. Only the Link header is authoritative, and string derivation will break on servers that use a different convention. Additionally, string manipulation enables path traversal attacks — an attacker could craft resource URLs that trick the client into reading or writing the wrong ACL document if the client constructs ACL paths by string concatenation.",
+      "validation": {
+        "approach": "String derivation prohibition tests.",
+        "tests": [
+          "Inspect the client source code or instrument it to assert it never constructs ACL URLs by appending .acl or any other suffix.",
+          "Configure a server that stores ACLs at a non-standard path (e.g., /.acls/{hash}). Assert the client discovers and uses the correct ACL URL via Link header.",
+          "GET a resource where the Link: rel=acl URL is on a different path than the resource. Assert the client follows the Link header, not a derived path."
+        ]
+      }
+    },
+    {
+      "id": "WAC-03",
+      "spec": "Web Access Control",
+      "section": "3.2",
+      "level": "MUST",
+      "requirement": "Accept responses to ACL resource requests in text/turtle format",
+      "reason": "ACL resources are RDF documents served as Turtle. A client that manages permissions must be able to parse Turtle to read existing grants and serialize Turtle to write new ones. This is the only format guaranteed for ACL resources.",
+      "validation": {
+        "approach": "ACL parsing and serialization tests.",
+        "tests": [
+          "GET an ACL resource. Assert Content-Type: text/turtle.",
+          "Parse the ACL Turtle document. Assert it produces valid RDF triples with acl: prefix terms.",
+          "Construct a new ACL document in Turtle. PUT it to the ACL URL. GET it back and assert round-trip fidelity.",
+          "Attempt to PUT an ACL document as JSON-LD. Assert the server rejects it (ACL must be Turtle)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-04",
+      "spec": "Web Access Control",
+      "section": "4.2",
+      "level": "MUST",
+      "requirement": "Understand the four access modes: acl:Read, acl:Write, acl:Append, acl:Control",
+      "reason": "These four modes are the vocabulary of Solid permissions. Read allows GET, Write allows PUT/DELETE, Append allows POST and additive PATCH, and Control allows managing the ACL itself. A client must understand all four to correctly interpret and construct authorization rules. acl:Control is particularly dangerous — it allows the grantee to modify the ACL itself, including granting themselves acl:Control on other resources. A client that treats Control like any other mode (e.g., in a share UI that lets users pick modes from a checklist without warning) risks users accidentally granting full administrative access, enabling privilege escalation.",
+      "validation": {
+        "approach": "Per-mode access enforcement tests.",
+        "tests": [
+          "Grant only acl:Read to an agent. Assert GET succeeds but PUT, POST, DELETE, and PATCH all return 403.",
+          "Grant only acl:Append to an agent. Assert POST succeeds, additive PATCH succeeds, but PUT and DELETE return 403.",
+          "Grant only acl:Write to an agent. Assert PUT, POST, DELETE, and PATCH all succeed.",
+          "Grant only acl:Control to an agent. Assert they can GET and PUT the ACL resource but cannot GET the protected resource itself (Control does not imply Read).",
+          "Grant acl:Control to an agent. Have that agent grant themselves acl:Read and acl:Write. Assert the escalation succeeds (demonstrating why Control is dangerous).",
+          "Verify the client's permission UI distinguishes Control from other modes with appropriate warnings."
+        ]
+      }
+    },
+    {
+      "id": "WAC-05",
+      "spec": "Web Access Control",
+      "section": "4.3",
+      "level": "MUST",
+      "requirement": "Support acl:agent matching for individual agent URIs",
+      "reason": "Agent-level grants are the most common access control pattern — granting a specific person (identified by WebID) access to a specific resource. Without this, a client cannot implement the basic 'share with Alice' workflow.",
+      "validation": {
+        "approach": "Agent-specific grant tests.",
+        "tests": [
+          "Grant acl:Read to Alice's WebID on a resource. Authenticate as Alice and assert GET succeeds.",
+          "Authenticate as Bob (whose WebID is not granted). Assert GET returns 403.",
+          "Grant acl:Read to both Alice and Bob in separate acl:agent triples. Assert both can read.",
+          "Remove Alice's grant. Assert Alice gets 403 and Bob still succeeds."
+        ]
+      }
+    },
+    {
+      "id": "WAC-06",
+      "spec": "Web Access Control",
+      "section": "4.3",
+      "level": "MUST",
+      "requirement": "Support acl:agentClass matching for foaf:Agent (public) and acl:AuthenticatedAgent",
+      "reason": "foaf:Agent grants access to everyone, authenticated or not — essential for public resources. acl:AuthenticatedAgent grants access to any logged-in user. These class-level grants enable broad sharing without enumerating individual agents.",
+      "validation": {
+        "approach": "Class-level grant tests.",
+        "tests": [
+          "Grant acl:Read via acl:agentClass foaf:Agent. Assert an unauthenticated request succeeds.",
+          "Grant acl:Read via acl:agentClass acl:AuthenticatedAgent. Assert an unauthenticated request returns 401/403 and an authenticated request succeeds.",
+          "Remove the foaf:Agent grant. Assert unauthenticated access is denied.",
+          "Grant acl:Write via foaf:Agent. Assert anyone can write (and verify this is flagged as dangerous by the client if it has a permission UI)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-07",
+      "spec": "Web Access Control",
+      "section": "4.3",
+      "level": "MUST",
+      "requirement": "Support acl:agentGroup matching via vcard:Group with vcard:hasMember predicates",
+      "reason": "Group-based access control lets a pod owner grant access to an entire team by referencing a group document, rather than listing every member individually. Security concern: the integrity of the group document is part of the security boundary. If the group document is hosted on a different server, a compromise of that server lets the attacker add themselves to the group and gain access to all resources protected by it. The client should warn when group documents are hosted on external origins, and the pod owner should understand that trusting a group means trusting the group document's host.",
+      "validation": {
+        "approach": "Group-based access and cross-origin group trust tests.",
+        "tests": [
+          "Create a vcard:Group with Alice and Bob as members. Grant acl:Read to the group. Assert both Alice and Bob can read.",
+          "Authenticate as Charlie (not in the group). Assert 403.",
+          "Add Charlie to the group document. Assert Charlie can now read (without changing the ACL).",
+          "Remove Alice from the group document. Assert Alice can no longer read.",
+          "Host the group document on a different origin. Assert the server still resolves group membership cross-origin.",
+          "Host the group document on a different origin and make it return an empty group. Assert all previously granted members lose access.",
+          "Host the group document on a different origin and add an attacker's WebID. Assert the attacker gains access (demonstrating the trust boundary risk)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-08",
+      "spec": "Web Access Control",
+      "section": "5.3.2",
+      "level": "MUST",
+      "requirement": "Support acl:origin matching using the HTTP Origin header",
+      "reason": "Origin-based access control restricts which web applications can access a resource, even if the user is authenticated. This prevents a malicious third-party website from using a user's credentials to read their pod data via cross-origin requests. Note: Origin-based checks are only effective for browser clients, as non-browser clients (curl, scripts, server-side code) can set arbitrary Origin headers. This is a defense-in-depth measure for browser contexts, not a primary access control mechanism.",
+      "validation": {
+        "approach": "Origin-based restriction tests from browser and non-browser contexts.",
+        "tests": [
+          "Set an ACL with acl:origin https://trusted-app.example.com. Send a request with Origin: https://trusted-app.example.com. Assert access granted.",
+          "Send a request with Origin: https://malicious-app.example.com. Assert 403.",
+          "Send a request with no Origin header (non-browser client). Assert the server's behaviour matches the spec (typically grants access, since Origin is a browser-only concept).",
+          "Send a request with a spoofed Origin header from a script. Verify the request succeeds (documenting that Origin is not a hard security boundary for non-browser clients).",
+          "Set an ACL with multiple acl:origin values. Assert requests from any listed origin succeed."
+        ]
+      }
+    },
+    {
+      "id": "WAC-09",
+      "spec": "Web Access Control",
+      "section": "5.3.4",
+      "level": "MUST",
+      "requirement": "When a request requires acl:Append, grant access if either acl:Append or acl:Write is allowed",
+      "reason": "Write is a superset of Append — anyone who can modify a resource can also add to it. Treating Write as implying Append avoids requiring pod owners to redundantly grant both modes, simplifying ACL management.",
+      "validation": {
+        "approach": "Mode implication tests.",
+        "tests": [
+          "Grant only acl:Append. POST to the resource. Assert success.",
+          "Grant only acl:Write (no explicit Append). POST to the resource. Assert success (Write implies Append).",
+          "Grant neither Append nor Write. POST to the resource. Assert 403.",
+          "Grant only acl:Read. POST to the resource. Assert 403 (Read does not imply Append)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-10",
+      "spec": "Web Access Control",
+      "section": "5.1",
+      "level": "MUST",
+      "requirement": "When a resource has no ACL representation, walk up the container hierarchy to find the effective ACL resource",
+      "reason": "Not every resource needs its own ACL — most inherit from their container. This inheritance model means a pod owner can set permissions on a folder and have them apply to all contents, dramatically reducing the number of ACL documents to manage. Security concern: inheritance means blast radius — a single overly-permissive ACL at the pod root can expose the entire pod. A misconfigured parent container ACL affects all descendants. The client should warn users when setting container-level permissions about the scope of inheritance, especially for acl:default rules.",
+      "validation": {
+        "approach": "ACL inheritance hierarchy and blast radius tests.",
+        "tests": [
+          "Create a container with an ACL granting acl:Read to Alice via acl:default. Create a resource inside with no ACL. Assert Alice can read the resource (inherited).",
+          "Add an explicit ACL to the resource granting acl:Read to Bob. Assert Bob can read but Alice cannot (explicit overrides inherited).",
+          "Remove the resource's explicit ACL. Assert Alice can read again (falls back to container).",
+          "Set a permissive ACL (foaf:Agent, acl:Read+Write) on the root container via acl:default. Create nested containers and resources. Assert ALL descendants are publicly writable (demonstrating blast radius).",
+          "Walk a 5-level container hierarchy where only the root has an ACL. Assert the client correctly discovers the effective ACL at the root.",
+          "Verify the root container always has an ACL (the spec requires this). Assert the client does not walk past the storage root."
+        ]
+      }
+    },
+    {
+      "id": "WAC-11",
+      "spec": "Web Access Control",
+      "section": "4.1",
+      "level": "MUST",
+      "requirement": "Understand acl:accessTo (specific resource) and acl:default (container inheritance) access objects",
+      "reason": "accessTo targets a single resource. default applies to everything inside a container that lacks its own ACL. Clients must distinguish between them to correctly interpret whether a grant is scoped or inherited.",
+      "validation": {
+        "approach": "accessTo vs default scoping tests.",
+        "tests": [
+          "Set an ACL with acl:accessTo on a container granting acl:Read to Alice. Assert Alice can read the container listing but NOT resources inside it.",
+          "Add acl:default to the same ACL. Assert Alice can now read resources inside the container.",
+          "Set an ACL with only acl:default (no acl:accessTo) on a container. Assert Alice can read resources inside but NOT the container listing itself.",
+          "Verify the client correctly distinguishes these two predicates when displaying permissions."
+        ]
+      }
+    },
+    {
+      "id": "WAC-12",
+      "spec": "Web Access Control",
+      "section": "5.2",
+      "level": "MUST",
+      "requirement": "Validate that applicable authorizations contain rdf:type acl:Authorization, at least one access object, at least one mode, and at least one subject",
+      "reason": "An authorization missing any of these four components is malformed and must be ignored. Enforcing structural validity prevents incomplete or garbage ACL entries from accidentally granting or denying access. The fail-closed principle applies: if an ACL is unparseable or contains only malformed authorizations, access should be denied, not granted. A malformed ACL that is silently ignored could leave a resource unprotected if no valid authorizations remain.",
+      "validation": {
+        "approach": "Malformed ACL rejection tests.",
+        "tests": [
+          "Create an ACL with all four required components. Assert it takes effect.",
+          "Create an ACL missing rdf:type acl:Authorization. Assert the server ignores it (resource effectively has no grants).",
+          "Create an ACL missing acl:accessTo and acl:default. Assert it is ignored.",
+          "Create an ACL missing acl:mode. Assert it is ignored.",
+          "Create an ACL missing all agent predicates (acl:agent, acl:agentClass, acl:agentGroup). Assert it is ignored.",
+          "Create an ACL with one valid and one malformed authorization. Assert only the valid one takes effect.",
+          "Create an ACL with all malformed authorizations. Assert access is denied (fail-closed)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-13",
+      "spec": "Web Access Control",
+      "section": "6.1",
+      "level": "MUST",
+      "requirement": "Discover access privileges via GET/HEAD requests by checking the WAC-Allow header",
+      "reason": "WAC-Allow is a lightweight permission hint that tells the client what the current user and the public can do with a resource, without requiring the client to fetch and evaluate the full ACL document. This enables UIs to show lock icons, disable buttons, etc.",
+      "validation": {
+        "approach": "WAC-Allow header interpretation tests.",
+        "tests": [
+          "GET a resource as an authenticated user with Read+Write access. Assert WAC-Allow contains user='read write'.",
+          "GET a public resource as an unauthenticated user. Assert WAC-Allow contains public='read'.",
+          "GET a resource where the user has Read but not Write. Assert WAC-Allow contains user='read' (no write).",
+          "Verify the client correctly parses WAC-Allow and uses it to inform UI state (e.g., disabling edit buttons when write is absent).",
+          "Verify the client treats WAC-Allow as a hint, not an authoritative enforcement mechanism (the ACL is authoritative)."
+        ]
+      }
+    },
+    {
+      "id": "WAC-14",
+      "spec": "Web Access Control",
+      "section": "6.1",
+      "level": "MUST",
+      "requirement": "Ignore malformed WAC-Allow headers and continue processing when encountering unrecognised access parameters",
+      "reason": "Defensive parsing ensures forward compatibility. Future spec revisions may add new access modes. A client that crashes on unrecognised parameters would break when servers upgrade, violating the robustness principle. When ignoring malformed headers, the client should err on the side of showing fewer permissions (more restrictive UI), not more — a malformed header should not result in the client displaying capabilities the user may not have.",
+      "validation": {
+        "approach": "Forward compatibility and defensive parsing tests.",
+        "tests": [
+          "Send a WAC-Allow header with a known mode (read, write, append, control). Assert correct parsing.",
+          "Send a WAC-Allow header with an unknown mode (e.g., user='read execute'). Assert the client ignores 'execute' and preserves 'read'.",
+          "Send a completely malformed WAC-Allow header (e.g., garbage string). Assert the client ignores it entirely and does not crash.",
+          "Send a WAC-Allow header with no modes (user=''). Assert the client interprets it as no permissions.",
+          "Verify the client defaults to a restrictive UI state when WAC-Allow is absent or unparseable."
+        ]
+      }
+    },
+    {
+      "id": "WID-01",
+      "spec": "WebID Profile",
+      "section": "3.1",
+      "level": "MUST",
+      "requirement": "Make an HTTP GET request to a WebID Profile resource with Accept header requesting text/turtle or application/ld+json",
+      "reason": "Content negotiation is essential because a WebID URI may serve HTML to browsers and RDF to machines. The Accept header tells the server to return a machine-readable representation that the client can parse for OIDC issuers, storage URLs, and other metadata.",
+      "validation": {
+        "approach": "Content negotiation tests for WebID Profile.",
+        "tests": [
+          "GET a WebID with Accept: text/turtle. Assert 200 and Content-Type: text/turtle.",
+          "GET a WebID with Accept: application/ld+json. Assert 200 and Content-Type: application/ld+json.",
+          "GET a WebID with Accept: text/html. Assert the server returns HTML (not RDF). Verify the client does not attempt to parse HTML as RDF.",
+          "GET a WebID with Accept: text/turtle, application/ld+json (quality values). Assert the server returns the preferred format.",
+          "Parse the returned profile and assert it contains at least a foaf:primaryTopic or solid:oidcIssuer triple."
+        ]
+      }
+    },
+    {
+      "id": "WID-02",
+      "spec": "WebID Profile",
+      "section": "3.1",
+      "level": "SHOULD",
+      "requirement": "Expect and process core profile predicates: rdf:type, pim:preferencesFile, ldp:inbox, pim:storage, rdfs:seeAlso",
+      "reason": "These predicates form the infrastructure of a Solid identity. pim:storage locates the pod, ldp:inbox enables notifications, and rdfs:seeAlso links to extended profiles. Clients that ignore them cannot discover the full picture of a user's Solid presence. Security concern: rdfs:seeAlso and pim:preferencesFile link to arbitrary URLs. For server-side clients, following these links without origin validation is an SSRF vector — a malicious profile could force the client to make requests to internal network resources (localhost, cloud metadata endpoints, private IP ranges).",
+      "validation": {
+        "approach": "Profile predicate processing and SSRF prevention tests.",
+        "tests": [
+          "Fetch a WebID profile. Assert the client extracts pim:storage and can use it to locate the pod root.",
+          "Fetch a WebID profile. Assert the client extracts ldp:inbox for notification delivery.",
+          "Fetch a WebID profile with rdfs:seeAlso pointing to a valid external document. Assert the client follows it and merges the triples.",
+          "Fetch a WebID profile with rdfs:seeAlso pointing to http://localhost:8080/internal. Assert a server-side client rejects the URL.",
+          "Fetch a WebID profile with pim:preferencesFile pointing to http://169.254.169.254/latest/meta-data/. Assert rejection.",
+          "Fetch a WebID profile with rdfs:seeAlso pointing to a private IP (10.0.0.1). Assert rejection for server-side clients."
+        ]
+      }
+    },
+    {
+      "id": "WID-03",
+      "spec": "WebID Profile",
+      "section": "3.3",
+      "level": "MAY",
+      "requirement": "Retrieve Extended Profile Documents linked via rdfs:seeAlso and foaf:isPrimaryTopicOf",
+      "reason": "Extended profiles let users split their identity across multiple documents — keeping sensitive data separate from public data. Clients that follow these links can access richer profile information like trusted apps, certificates, and preferences. Security concern: extended profiles can chain rdfs:seeAlso links, potentially creating a redirect chain that leads to internal network resources (SSRF). A server-side client must validate every URL in the chain against an SSRF allowlist, limit the chain depth to prevent infinite loops, and set timeouts on each fetch to prevent denial-of-service via slow responses.",
+      "validation": {
+        "approach": "Extended profile traversal with safety limits.",
+        "tests": [
+          "Fetch a WebID profile with one rdfs:seeAlso link. Follow it and assert the extended triples are merged.",
+          "Fetch a WebID profile with a chain of rdfs:seeAlso links (A → B → C). Assert the client follows the chain up to a configurable depth limit.",
+          "Create a circular rdfs:seeAlso chain (A → B → A). Assert the client detects the cycle and terminates.",
+          "Create an rdfs:seeAlso chain where one link points to http://localhost:6379/. Assert rejection.",
+          "Create an rdfs:seeAlso chain where one link responds with a 10-second delay. Assert the client times out and does not block indefinitely.",
+          "Create an rdfs:seeAlso chain with 100 links. Assert the client enforces a maximum depth (e.g., 5)."
+        ]
+      }
+    },
+    {
+      "id": "WID-04",
+      "spec": "WebID Profile",
+      "section": "5",
+      "level": "SHOULD",
+      "requirement": "Use the solid:oidcIssuer predicate from the WebID Profile to initiate the login process",
+      "reason": "This is the standard mechanism for discovering where to authenticate a Solid user. Rather than hardcoding an OIDC provider, the client reads the user's profile to find their chosen issuer, supporting Solid's decentralised identity model.",
+      "validation": {
+        "approach": "Issuer-initiated login tests.",
+        "tests": [
+          "Given a WebID, fetch the profile, extract solid:oidcIssuer, and initiate login against that issuer. Assert the full auth flow completes.",
+          "Given a WebID with multiple solid:oidcIssuer values, assert the client presents a choice or uses a preference order.",
+          "Given a WebID with no solid:oidcIssuer, assert the client fails with a clear error message rather than defaulting to a hardcoded issuer.",
+          "Verify the client does not hardcode any OIDC provider URIs."
+        ]
+      }
+    },
+    {
+      "id": "WID-05",
+      "spec": "WebID Profile",
+      "section": "6",
+      "level": "SHOULD",
+      "requirement": "Discover notification Inbox via the ldp:inbox property in the WebID Profile",
+      "reason": "The Inbox is the LDN endpoint for asynchronous communication with a pod owner. Clients need it to send access requests, notifications, or messages. Discovery via the profile avoids hardcoding Inbox URLs.",
+      "validation": {
+        "approach": "Inbox discovery tests.",
+        "tests": [
+          "Fetch a WebID profile with ldp:inbox. Assert the client extracts the Inbox URL.",
+          "POST a notification to the discovered Inbox. Assert 201 Created.",
+          "Fetch a WebID profile without ldp:inbox. Assert the client handles the absence gracefully (no crash, clear error or fallback).",
+          "Verify the discovered Inbox URL is validated (HTTPS, not a private IP) before sending notifications."
+        ]
+      }
+    },
+    {
+      "id": "NOT-01",
+      "spec": "Solid Notifications",
+      "section": "2.1",
+      "level": "MUST",
+      "requirement": "Discover description resources by following describedby link relations and solid:storageDescription links in HTTP responses",
+      "reason": "Description resources advertise what notification channels and subscription services are available for a resource or storage. Without discovery, the client cannot know what real-time update mechanisms the server supports.",
+      "validation": {
+        "approach": "Notification description resource discovery tests.",
+        "tests": [
+          "GET a resource and assert a Link: rel=describedby header is present.",
+          "Follow the describedby URL. Assert it returns a JSON-LD document listing available subscription services.",
+          "GET the storage root and follow the solid:storageDescription link. Assert it lists notification channels.",
+          "Verify the client handles the case where no describedby link is present (server does not support notifications)."
+        ]
+      }
+    },
+    {
+      "id": "NOT-02",
+      "spec": "Solid Notifications",
+      "section": "2.1",
+      "level": "MUST",
+      "requirement": "Accept description resource responses in application/ld+json format",
+      "reason": "The Solid Notifications data model is defined in JSON-LD. Unlike the rest of Solid (which uses Turtle), notifications use JSON-LD exclusively because it is the native format of Activity Streams and the broader JSON-based notification ecosystem.",
+      "validation": {
+        "approach": "JSON-LD description resource parsing tests.",
+        "tests": [
+          "GET a description resource with Accept: application/ld+json. Assert 200 and Content-Type: application/ld+json.",
+          "Parse the response as JSON-LD. Assert it contains subscription service URIs and channel types.",
+          "GET a description resource with Accept: text/turtle. Assert the server either returns Turtle or 406 (depending on server support).",
+          "Verify the client can parse the JSON-LD @context correctly."
+        ]
+      }
+    },
+    {
+      "id": "NOT-03",
+      "spec": "Solid Notifications",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Construct subscription requests using the Notification Channel Data Model",
+      "reason": "The data model ensures interoperability between any client and any server implementing Solid Notifications. Using a standardised request format means a single client can subscribe to channels on any conformant server without custom integration.",
+      "validation": {
+        "approach": "Subscription request conformance tests.",
+        "tests": [
+          "Construct a subscription request with the required fields (type, topic). POST it to the subscription service. Assert 200 or 201.",
+          "Construct a subscription request missing the topic field. Assert 422.",
+          "Construct a subscription request with an invalid channel type. Assert 415 or 422.",
+          "Verify the subscription response contains the channel URL for receiving notifications."
+        ]
+      }
+    },
+    {
+      "id": "NOT-04",
+      "spec": "Solid Notifications",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Send Content-Type: application/ld+json in subscription requests",
+      "reason": "The server needs to know the request body is JSON-LD to parse it with the correct JSON-LD context. Without the correct Content-Type, the server may reject the request or misinterpret the subscription parameters.",
+      "validation": {
+        "approach": "Content-Type enforcement tests for subscriptions.",
+        "tests": [
+          "POST a subscription with Content-Type: application/ld+json. Assert success.",
+          "POST a subscription with Content-Type: application/json. Assert the server rejects it (415 or 400).",
+          "POST a subscription with no Content-Type. Assert rejection.",
+          "Verify the client library always sets Content-Type: application/ld+json for subscription requests."
+        ]
+      }
+    },
+    {
+      "id": "NOT-05",
+      "spec": "Solid Notifications",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Handle 415 Unsupported Media Type responses for unsupported profile parameters",
+      "reason": "A 415 indicates the server does not support the requested channel type or profile. The client must catch this and either fall back to a different channel type or inform the user, rather than treating it as a generic server error.",
+      "validation": {
+        "approach": "Channel fallback tests.",
+        "tests": [
+          "Request a WebSocket channel from a server that only supports Webhooks. Assert 415.",
+          "After receiving 415, assert the client either falls back to a supported channel type or surfaces a specific error (not a generic failure).",
+          "Request a supported channel type. Assert success.",
+          "Verify the client does not retry 415 responses (the server's capabilities won't change on retry)."
+        ]
+      }
+    },
+    {
+      "id": "NOT-06",
+      "spec": "Solid Notifications",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Handle 422 Unprocessable Entity responses for malformed subscription requests",
+      "reason": "A 422 means the request is syntactically valid JSON-LD but violates semantic constraints (e.g. missing topic, invalid channel type). The client should treat this as a bug in request construction and provide a meaningful error message.",
+      "validation": {
+        "approach": "Subscription error handling tests.",
+        "tests": [
+          "Send a subscription with a missing required field. Assert 422.",
+          "Send a subscription with an invalid topic URI. Assert 422.",
+          "After receiving 422, assert the client surfaces the error details from the response body.",
+          "Verify the client does not retry 422 responses."
+        ]
+      }
+    },
+    {
+      "id": "NOT-07",
+      "spec": "Solid Notifications",
+      "section": "2.2",
+      "level": "MUST",
+      "requirement": "Support interaction with subscription services via GET, HEAD, OPTIONS, and POST methods",
+      "reason": "Different HTTP methods serve different purposes: POST creates subscriptions, GET retrieves channel state, HEAD checks availability, and OPTIONS enables CORS preflight. Full method support is required for the subscription lifecycle. Security concern: POST to subscription services creates server-side state. A client that does not clean up subscriptions on logout or session end leaves orphaned subscriptions that continue to receive notifications about the user's resources — a data leak if the subscription endpoint is later compromised or if another user gains access to the endpoint.",
+      "validation": {
+        "approach": "Full subscription lifecycle tests including cleanup.",
+        "tests": [
+          "POST to create a subscription. Assert 200/201 with channel URL.",
+          "GET the subscription service. Assert it returns the list of active subscriptions.",
+          "HEAD the subscription service. Assert it returns appropriate headers without a body.",
+          "OPTIONS the subscription service. Assert CORS headers are present.",
+          "Create a subscription, then simulate logout. Assert the client unsubscribes (DELETE or closes the channel).",
+          "Verify no orphaned subscriptions remain after the client disconnects."
+        ]
+      }
+    },
+    {
+      "id": "NOT-08",
+      "spec": "Solid Notifications",
+      "section": "2.3",
+      "level": "MUST",
+      "requirement": "Process notification messages using the Notification Message Data Model",
+      "reason": "Notifications follow a specific schema with Activity Streams types, object references, and timestamps. Clients that cannot parse this model cannot extract meaningful information from notifications, defeating the purpose of real-time updates.",
+      "validation": {
+        "approach": "Notification message parsing tests.",
+        "tests": [
+          "Receive a Create notification. Assert the client extracts the activity type, object URI, and timestamp.",
+          "Receive an Update notification. Assert the client extracts the updated resource URI.",
+          "Receive a Delete notification. Assert the client extracts the deleted resource URI.",
+          "Receive a notification with additional custom properties. Assert the client parses the known fields and does not crash on unknown ones.",
+          "Receive a notification with a malformed timestamp. Assert the client handles it gracefully."
+        ]
+      }
+    },
+    {
+      "id": "NOT-09",
+      "spec": "Solid Notifications",
+      "section": "2.3",
+      "level": "MUST",
+      "requirement": "Conform to a specific notification channel type (e.g. WebSocket, Webhook)",
+      "reason": "Channel types define the transport mechanism for receiving notifications. A WebSocket channel requires maintaining a persistent connection; a Webhook requires exposing an HTTP endpoint. The client must implement the transport contract of its chosen channel.",
+      "validation": {
+        "approach": "Channel-specific transport tests.",
+        "tests": [
+          "WebSocket: Subscribe to a WebSocket channel. Assert the client opens and maintains a WebSocket connection.",
+          "WebSocket: Modify a resource. Assert the client receives a notification over the WebSocket within a reasonable time (< 5 seconds).",
+          "WebSocket: Close the connection. Assert the client handles reconnection or cleanup.",
+          "Webhook: Subscribe with a Webhook channel URL. Assert the server POSTs notifications to the URL.",
+          "Webhook: Verify the Webhook endpoint validates the notification's authenticity (e.g., signature or shared secret).",
+          "Verify the client handles channel disconnections and reconnects gracefully."
+        ]
+      }
+    },
+    {
+      "id": "NOT-10",
+      "spec": "Solid Notifications",
+      "section": "2.4",
+      "level": "MUST",
+      "requirement": "Process notifications expressed with Activity Streams and Solid Notifications vocabularies",
+      "reason": "Activity Streams (AS2) is the W3C standard vocabulary for describing actions (Create, Update, Delete). Solid Notifications extends it with Solid-specific context. Clients must understand both to interpret what happened to a resource.",
+      "validation": {
+        "approach": "Vocabulary conformance tests.",
+        "tests": [
+          "Receive a notification using AS2 types (as:Create, as:Update, as:Delete). Assert the client maps them to appropriate actions.",
+          "Receive a notification using Solid Notifications vocabulary extensions. Assert the client handles them.",
+          "Receive a notification with both AS2 and Solid-specific properties. Assert both are parsed.",
+          "Verify the client resolves the JSON-LD @context to correctly interpret term definitions."
+        ]
+      }
+    },
+    {
+      "id": "NOT-11",
+      "spec": "Solid Notifications",
+      "section": "2.4",
+      "level": "SHOULD",
+      "requirement": "Be prepared for extended notification content beyond the core data model",
+      "reason": "Notification senders can augment notifications with additional JSON-LD context and properties. A client that strictly rejects unknown properties will break when servers add extensions, violating forward compatibility.",
+      "validation": {
+        "approach": "Extension tolerance tests.",
+        "tests": [
+          "Send a notification with extra properties not in the core model. Assert the client processes known fields and ignores unknown ones.",
+          "Send a notification with a custom @context extending the vocabulary. Assert the client does not reject it.",
+          "Send a notification with deeply nested extension objects. Assert the client does not crash.",
+          "Verify the client can still extract core fields (type, object, published) even when extensions are present."
+        ]
+      }
+    },
+    {
+      "id": "NOT-12",
+      "spec": "Solid Notifications",
+      "section": "2.4",
+      "level": "MAY",
+      "requirement": "Include data about agents controlling the client in subscription requests",
+      "reason": "Some notification services use agent information to filter or personalise notifications. Including it is optional because it involves sharing personal data — specifically, it links a WebID to the specific resources the agent is watching. If the subscription service is compromised, the attacker obtains a surveillance log of who is monitoring which resources. The spec respects the principle of data minimisation: only include agent information when the notification service requires it for functionality, and never include more than the minimum needed.",
+      "validation": {
+        "approach": "Data minimisation audit tests.",
+        "tests": [
+          "Subscribe without agent information. Assert the subscription succeeds (agent info is optional).",
+          "Subscribe with agent information (WebID). Assert the subscription succeeds and the service can use it for filtering.",
+          "Inspect the subscription request body. Assert it contains only the fields explicitly required by the service, no extras.",
+          "Verify the client does not include browsing history, device information, or other extraneous data in subscription requests.",
+          "Subscribe to multiple resources. Verify each subscription only reveals the specific topic, not the full list of subscriptions."
+        ]
+      }
+    },
+    {
+      "id": "NOT-13",
+      "spec": "Solid Notifications",
+      "section": "4.1",
+      "level": "SHOULD NOT",
+      "requirement": "Send subscription requests to untrusted services, including localhost or loopback addresses",
+      "reason": "An attacker could trick a client into subscribing to a local service, causing the client to make requests to internal network resources (SSRF). Restricting subscriptions to trusted services prevents this class of server-side request forgery attack.",
+      "validation": {
+        "approach": "SSRF prevention tests for subscription endpoints.",
+        "tests": [
+          "Discover a subscription service at http://localhost:3000/. Assert the client refuses to send the subscription request.",
+          "Discover a subscription service at http://127.0.0.1:8080/. Assert rejection.",
+          "Discover a subscription service at http://[::1]:3000/. Assert rejection (IPv6 loopback).",
+          "Discover a subscription service at http://169.254.169.254/ (cloud metadata). Assert rejection.",
+          "Discover a subscription service at http://10.0.0.1/ (private range). Assert rejection.",
+          "Discover a subscription service at http://172.16.0.1/ (private range). Assert rejection.",
+          "Discover a subscription service at http://192.168.1.1/ (private range). Assert rejection.",
+          "Test DNS rebinding: register a domain that resolves to 127.0.0.1 on second lookup. Assert the client detects the rebinding or validates the resolved IP.",
+          "Test URL encoding bypass: http://127.0.0.1/ encoded as http://0x7f000001/. Assert rejection.",
+          "Discover a subscription service at a valid public HTTPS URL. Assert the client accepts it."
+        ]
+      }
+    },
+    {
+      "id": "NOT-14",
+      "spec": "Solid Notifications",
+      "section": "4.2",
+      "level": "SHOULD",
+      "requirement": "Minimise information exposure in subscription requests",
+      "reason": "Subscription requests reveal which resources the client is interested in. Over-sharing (e.g. including user profile data, browsing history, or device information) creates a tracking vector. Data minimisation limits what notification services can learn about users.",
+      "validation": {
+        "approach": "Information leakage audit tests.",
+        "tests": [
+          "Capture a subscription request. Assert it contains only the required fields (type, topic) and no extraneous data.",
+          "Assert the subscription request does not contain the user's WebID unless explicitly required by the service.",
+          "Assert the subscription request does not contain User-Agent strings that reveal client version or device details (beyond what HTTP requires).",
+          "Assert the subscription request does not contain Referer or Origin headers that reveal the user's browsing context.",
+          "Compare subscription requests from two different users subscribing to the same resource. Assert the requests are indistinguishable except for authentication credentials."
+        ]
+      }
+    }
+  ]
+}

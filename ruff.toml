@@ -1,0 +1,21 @@
+# Pacific Systems shared Ruff configuration.
+#
+# Source of truth: pacific-infra/workflows/ruff.toml
+# Mirrored to each Python repo as ./ruff.toml. Update the source here and
+# re-sync — do not drift from this file in individual repos.
+#
+# Line length is a formatter concern (`ruff format`), not a lint error.
+# E501 is ignored globally; everything else in the select set is enforced.
+
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[lint]
+# Minimal shared set: pycodestyle errors, pyflakes, import sorting, pyupgrade.
+# Deliberately narrow so no repo sees new lint failures from centralisation.
+# If you want broader rules (N/W/B/A/SIM), propose it as a separate change.
+select = ["E", "F", "I", "UP"]
+ignore = [
+    "E501",   # line length — owned by formatter, not lint
+]

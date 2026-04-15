@@ -1,7 +1,6 @@
 """Tests for Graph — the core data primitive."""
 
 import pytest
-
 from people import FOAF, RDF, SCHEMA, URI, Graph, Literal, Triple
 
 
