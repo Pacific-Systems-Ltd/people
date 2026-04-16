@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 
-async def discover_oidc(issuer: str) -> dict:
+async def discover_oidc(issuer: str) -> dict[str, Any]:
     """Fetch the OpenID Connect discovery document from an issuer.
 
     Args:
@@ -21,4 +23,5 @@ async def discover_oidc(issuer: str) -> dict:
     async with httpx.AsyncClient() as client:
         resp = await client.get(url)
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result

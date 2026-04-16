@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 
 from people._auth.credentials import exchange_client_credentials
 from people._auth.dpop import DPoPKey
@@ -87,7 +88,7 @@ class SolidSession:
         expires_in = token_data.get("expires_in", 600)
 
         # Build refresh callback for the authenticated client
-        async def _refresh():
+        async def _refresh() -> dict[str, Any]:
             return await exchange_client_credentials(
                 token_endpoint, client_id, client_secret, dpop_key
             )
@@ -235,5 +236,5 @@ class SolidSession:
     async def __aenter__(self) -> SolidSession:
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close()

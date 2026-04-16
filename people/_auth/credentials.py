@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import urllib.parse
+from typing import Any
 
 import httpx
 
@@ -15,7 +16,7 @@ async def exchange_client_credentials(
     client_id: str,
     client_secret: str,
     dpop_key: DPoPKey,
-) -> dict:
+) -> dict[str, Any]:
     """Exchange client credentials for a DPoP-bound access token.
 
     Handles DPoP-Nonce retry: if the server requires a nonce, retries once
@@ -69,4 +70,5 @@ async def exchange_client_credentials(
                 )
 
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result

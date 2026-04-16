@@ -11,6 +11,7 @@ import hashlib
 import json
 import time
 import uuid
+from typing import Any
 
 import jwt
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -131,7 +132,7 @@ def verify_dpop_proof(
     max_age: int = 300,
     clock_skew: int = 60,
     seen_jti: set[str] | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Verify a DPoP proof JWT (server-side).
 
     Args:
@@ -218,7 +219,7 @@ def verify_dpop_proof(
     return payload
 
 
-def _jwk_to_public_key(jwk_data: dict) -> ec.EllipticCurvePublicKey:
+def _jwk_to_public_key(jwk_data: dict[str, Any]) -> ec.EllipticCurvePublicKey:
     """Reconstruct an EC public key from JWK data."""
     if jwk_data.get("kty") != "EC" or jwk_data.get("crv") != "P-256":
         raise ValueError("DPoP JWK must be EC P-256")

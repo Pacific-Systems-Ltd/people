@@ -6,8 +6,9 @@
 
 from __future__ import annotations
 
+import builtins
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from people._graph.graph import Graph
 from people._graph.triple import URI
@@ -136,7 +137,7 @@ class Pod:
         resp = await self._client.request("POST", url, content=turtle, headers=headers)
         raise_for_status(resp.status_code, url, resp.text)
 
-        location = resp.headers.get("location")
+        location: str | None = resp.headers.get("location")
         if not location:
             raise ValueError(f"Server did not return Location header for POST to {url}")
         return location
@@ -147,7 +148,7 @@ class Pod:
         resp = await self._client.request("DELETE", url)
         raise_for_status(resp.status_code, url, resp.text)
 
-    async def list(self, container_path: str) -> list[str]:
+    async def list(self, container_path: str) -> builtins.list[str]:
         """GET — list resources in a container. Returns URLs."""
         url = self._resolve(container_path)
         resp = await self._client.request(
@@ -187,7 +188,7 @@ class Pod:
         path: str,
         *,
         agent: str,
-        modes: list[str],
+        modes: builtins.list[str],
         inherited: bool = False,
     ) -> None:
         """Grant access to a resource. Reads .acl, adds grant, writes back."""
@@ -195,17 +196,19 @@ class Pod:
 
         # Discover ACL URL and verify WAC (SP-23)
         resource_graph = await self._require_wac(path)
+        acl_url = resource_graph.acl_url
+        assert acl_url is not None  # _require_wac guarantees this
 
         # Read or create the ACL (only catch 404 — any other error must propagate)
         from people._http.errors import NotFoundError
         try:
-            acl_graph = await self.read(resource_graph.acl_url)
+            acl_graph = await self.read(acl_url)
         except NotFoundError:
             acl_graph = Graph()
-            acl_graph.url = resource_graph.acl_url
+            acl_graph.url = acl_url
 
         # Build the grant triple
-        grant_id = URI(f"{resource_graph.acl_url}#grant-{agent.split('/')[-1].split('#')[0]}")
+        grant_id = URI(f"{acl_url}#grant-{agent.split('/')[-1].split('#')[0]}")
         acl_graph.add(grant_id, RDF.type, ACL.Authorization)
         acl_graph.add(grant_id, ACL.agent, URI(agent))
 
@@ -218,13 +221,15 @@ class Pod:
             acl_graph.add(grant_id, ACL.mode, URI(str(mode)))
 
         # Write the ACL back
-        await self.write(resource_graph.acl_url, acl_graph)
+        await self.write(acl_url, acl_graph)
 
     async def revoke(self, path: str, *, agent: str) -> None:
         """Revoke all access for an agent on a resource."""
         resource_graph = await self._require_wac(path)
+        acl_url = resource_graph.acl_url
+        assert acl_url is not None  # _require_wac guarantees this
 
-        acl_graph = await self.read(resource_graph.acl_url)
+        acl_graph = await self.read(acl_url)
 
         # Find and remove all triples referencing this agent
         agent_uri = URI(agent)
@@ -235,13 +240,15 @@ class Pod:
             for bt in block_triples:
                 acl_graph.remove(bt.subject, bt.predicate, bt.object)
 
-        await self.write(resource_graph.acl_url, acl_graph)
+        await self.write(acl_url, acl_graph)
 
-    async def grants(self, path: str) -> list[dict]:
+    async def grants(self, path: str) -> builtins.list[dict[str, Any]]:
         """List all grants on a resource. Returns list of {agent, modes, resource}."""
         resource_graph = await self._require_wac(path)
+        acl_url = resource_graph.acl_url
+        assert acl_url is not None  # _require_wac guarantees this
 
-        acl_graph = await self.read(resource_graph.acl_url)
+        acl_graph = await self.read(acl_url)
 
         # Find all Authorization subjects
         auth_triples = acl_graph.query(predicate=RDF.type, value=ACL.Authorization)
@@ -269,7 +276,7 @@ class Pod:
         from people._ldn.inbox import send_notification
         return await send_notification(self._resolve(inbox_path), notification, self._client)
 
-    async def list_notifications(self, inbox_path: str) -> list[str]:
+    async def list_notifications(self, inbox_path: str) -> builtins.list[str]:
         """List notification URLs in an LDN Inbox."""
         from people._ldn.inbox import list_notifications
         return await list_notifications(self._resolve(inbox_path), self._client)

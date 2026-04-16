@@ -17,6 +17,7 @@ import hashlib
 import logging
 import secrets
 import urllib.parse
+from typing import Any
 
 from people._auth.dpop import DPoPKey
 from people._http.tls import enforce_tls
@@ -87,7 +88,7 @@ async def exchange_auth_code(
     code_verifier: str,
     client_id: str,
     dpop_key: DPoPKey,
-) -> dict:
+) -> dict[str, Any]:
     """Exchange an authorization code for tokens with DPoP (OIDC-14).
 
     Args:
@@ -136,4 +137,5 @@ async def exchange_auth_code(
                 )
 
         resp.raise_for_status()
-        return resp.json()
+        result: dict[str, Any] = resp.json()
+        return result

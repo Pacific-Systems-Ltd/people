@@ -7,6 +7,11 @@
     graph = await alice.read("health/gp-records")
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from people._auth.session import SolidSession
+
 __version__ = "0.1.0"
 
 # Primitives
@@ -88,7 +93,9 @@ Append = ACL.Append
 Control = ACL.Control
 
 
-async def login(issuer: str, client_id: str, client_secret: str, *, discovery_url: str = ""):
+async def login(
+    issuer: str, client_id: str, client_secret: str, *, discovery_url: str = ""
+) -> "SolidSession":
     """Authenticate with a Solid OIDC issuer. Returns a SolidSession.
 
     Args:
@@ -112,7 +119,7 @@ async def login_interactive(
     redirect_uri: str,
     code: str,
     code_verifier: str,
-):
+) -> "SolidSession":
     """Authenticate via Authorization Code Flow with PKCE.
 
     See start_auth_flow() for generating the authorization URL and PKCE parameters.
