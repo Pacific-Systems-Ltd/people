@@ -25,15 +25,18 @@ Usage:
 from __future__ import annotations
 
 import copy
-from typing import Any
+from typing import Any, TypeVar, dataclass_transform
 
 from people._graph.graph import Graph
 from people._graph.triple import URI, Literal
-from people._model.fields import FieldDescriptor
+from people._model.fields import FieldDescriptor, field
 from people._rdf.namespaces import RDF
 
+_T = TypeVar("_T")
 
-def model(cls: type) -> type:
+
+@dataclass_transform(field_specifiers=(field, FieldDescriptor), kw_only_default=True)
+def model(cls: type[_T]) -> type[_T]:
     """Decorator that makes a class graph-aware.
 
     The class must define:
@@ -42,6 +45,9 @@ def model(cls: type) -> type:
 
     The decorator adds __init__, graph property, from_graph classmethod,
     and snapshot-based dirty tracking.
+
+    For type-checker visibility into ``.graph`` and ``.from_graph()``,
+    inherit from :class:`people.Model` in addition to using @ps.model.
     """
     # Collect field descriptors from class attributes
     fields: dict[str, FieldDescriptor] = {}

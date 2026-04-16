@@ -48,6 +48,7 @@ from people._ldn.inbox import (
 )
 
 # Model layer
+from people._model.base import Model
 from people._model.decorator import ModelTypeMismatchError, model
 from people._model.fields import field
 
@@ -141,7 +142,7 @@ __all__ = [
     # Primitives
     "URI", "Literal", "Triple", "Graph", "Pod", "WebIDProfile",
     # Model layer
-    "model", "field", "ModelTypeMismatchError", "Grant",
+    "model", "field", "Model", "ModelTypeMismatchError", "Grant",
     # Access control
     "evaluate_wac",
     # Access modes
