@@ -3,9 +3,9 @@
 import httpx
 import pytest
 import respx
-from people._auth.dpop import DPoPKey
-from people._discovery.storage import discover_storage
-from people._http.client import AuthenticatedClient
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._discovery.storage import discover_storage
+from pacific_solid._http.client import AuthenticatedClient
 
 
 def _make_client() -> AuthenticatedClient:
@@ -197,13 +197,13 @@ class TestLinkHeaderMultiValue:
     """Verify parse_link_headers_multi handles multiple rel=type values."""
 
     def test_single_type(self):
-        from people._http.headers import parse_link_headers_multi
+        from pacific_solid._http.headers import parse_link_headers_multi
         header = f'<{_PIM_STORAGE_TYPE}>; rel="type"'
         result = parse_link_headers_multi(header)
         assert result["type"] == [_PIM_STORAGE_TYPE]
 
     def test_multiple_types(self):
-        from people._http.headers import parse_link_headers_multi
+        from pacific_solid._http.headers import parse_link_headers_multi
         header = (
             f'<{_LDP_CONTAINER_TYPE}>; rel="type", '
             f'<{_PIM_STORAGE_TYPE}>; rel="type"'
@@ -214,13 +214,13 @@ class TestLinkHeaderMultiValue:
         assert _PIM_STORAGE_TYPE in result["type"]
 
     def test_mixed_rels(self):
-        from people._http.headers import parse_link_headers_multi
+        from pacific_solid._http.headers import parse_link_headers_multi
         header = '<.acl>; rel="acl", <http://example.org/Type>; rel="type"'
         result = parse_link_headers_multi(header)
         assert result["acl"] == [".acl"]
         assert result["type"] == ["http://example.org/Type"]
 
     def test_empty_header(self):
-        from people._http.headers import parse_link_headers_multi
+        from pacific_solid._http.headers import parse_link_headers_multi
         result = parse_link_headers_multi("")
         assert result == {}

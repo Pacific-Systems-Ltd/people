@@ -1,6 +1,6 @@
 """Tests for namespace constants."""
 
-from people import ACL, FOAF, RDF, SCHEMA, URI, Namespace
+from pacific_solid import ACL, FOAF, RDF, SCHEMA, URI, Namespace
 
 
 class TestNamespace:

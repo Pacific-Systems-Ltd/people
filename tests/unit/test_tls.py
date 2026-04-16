@@ -1,8 +1,8 @@
 """Tests for TLS enforcement (OIDC-16)."""
 
 import pytest
-from people._http.errors import SolidError
-from people._http.tls import enforce_tls
+from pacific_solid._http.errors import SolidError
+from pacific_solid._http.tls import enforce_tls
 
 
 class TestTLSEnforcement:

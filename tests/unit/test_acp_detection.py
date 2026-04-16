@@ -1,7 +1,7 @@
 """Tests for ACP vs WAC detection (SP-23)."""
 
 
-from people._acl.acp import AuthSchemeError, detect_auth_scheme
+from pacific_solid._acl.acp import AuthSchemeError, detect_auth_scheme
 
 
 class TestDetectAuthScheme:
@@ -36,6 +36,6 @@ class TestAuthSchemeError:
         assert err.url == "http://pod/resource"
 
     def test_inherits_from_solid_error(self):
-        from people._http.errors import SolidError
+        from pacific_solid._http.errors import SolidError
         err = AuthSchemeError("http://pod/resource")
         assert isinstance(err, SolidError)

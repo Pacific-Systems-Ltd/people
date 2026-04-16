@@ -2,7 +2,7 @@
 
 import jwt
 import pytest
-from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
+from pacific_solid._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
 
 
 class TestDPoPKey:

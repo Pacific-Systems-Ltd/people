@@ -1,7 +1,7 @@
 """Tests for WAC external group document fetching (WAC-07)."""
 
-from people import ACL, RDF, URI, Graph, evaluate_wac
-from people._rdf.namespaces import VCARD
+from pacific_solid import ACL, RDF, URI, Graph, evaluate_wac
+from pacific_solid._rdf.namespaces import VCARD
 
 
 def _make_group_acl(group_uri: str, resource: str) -> Graph:

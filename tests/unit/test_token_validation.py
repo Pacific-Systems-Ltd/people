@@ -7,10 +7,10 @@ import jwt
 import pytest
 import respx
 from cryptography.hazmat.primitives.asymmetric import ec
-from people._auth.dpop import DPoPKey
-from people._auth.token_validation import validate_id_token, verify_webid_issuer
-from people._http.client import AuthenticatedClient
-from people._http.errors import AuthenticationError
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._auth.token_validation import validate_id_token, verify_webid_issuer
+from pacific_solid._http.client import AuthenticatedClient
+from pacific_solid._http.errors import AuthenticationError
 
 
 def _make_client() -> AuthenticatedClient:

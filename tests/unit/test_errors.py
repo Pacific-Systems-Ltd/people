@@ -1,7 +1,7 @@
 """Tests for the Solid error hierarchy."""
 
 import pytest
-from people import (
+from pacific_solid import (
     AccessDeniedError,
     AuthenticationError,
     ConflictError,
@@ -10,7 +10,7 @@ from people import (
     PreconditionFailedError,
     SolidError,
 )
-from people._http.errors import raise_for_status
+from pacific_solid._http.errors import raise_for_status
 
 
 class TestErrorHierarchy:

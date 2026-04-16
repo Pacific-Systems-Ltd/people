@@ -2,15 +2,16 @@
   <img src="https://solidproject.org/assets/img/solid-emblem.svg" alt="Solid logo" height="120">
 </p>
 
-# people
+# pacific-solid
 
+[![PyPI](https://img.shields.io/pypi/v/pacific-solid.svg)](https://pypi.org/project/pacific-solid/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Solid Protocol](https://img.shields.io/badge/Solid_Protocol-v0.11-green.svg)](https://solidproject.org/TR/protocol)
 
 **The Python SDK for the [Solid Project](https://solidproject.org). From [gopacific.ai](www.gopacific.ai).**
 
-[Python](https://www.python.org) is the world's most popular programming language: the lingua franca of machine learning and data science. [Solid](https://solidproject.org/about) is [Tim Berners-Lee](https://en.wikipedia.org/wiki/Tim_Berners-Lee)'s architecture for a world where people control their own data. Created by the inventor of the [World Wide Web](https://en.wikipedia.org/wiki/World_Wide_Web), now stewarded by the [Open Data Institute](https://theodi.org/). The people SDK connects them together.
+[Python](https://www.python.org) is the world's most popular programming language: the lingua franca of machine learning and data science. [Solid](https://solidproject.org/about) is [Tim Berners-Lee](https://en.wikipedia.org/wiki/Tim_Berners-Lee)'s architecture for a world where people control their own data. Created by the inventor of the [World Wide Web](https://en.wikipedia.org/wiki/World_Wide_Web), now stewarded by the [Open Data Institute](https://theodi.org/). The pacific-solid SDK connects them together.
 
 
 ## What you can build with this
@@ -38,7 +39,7 @@ if credential.issuer == "https://kuleuven.be" and credential.valid:
     approve_application(candidate)
 ```
 
-Randstad uses Solid to [digitise the validation process for academic records](https://www.bbc.co.uk/news/business-68286395). This removes friction in the job market, helping people find work more easily. Meanwhile, citizens remain in control of their data. With people, Python developers have easy access to the same toolkit.
+Randstad uses Solid to [digitise the validation process for academic records](https://www.bbc.co.uk/news/business-68286395). This removes friction in the job market, helping people find work more easily. Meanwhile, citizens remain in control of their data. With pacific-solid, Python developers have easy access to the same toolkit.
 
 
 ### Patient record portability
@@ -57,14 +58,14 @@ await session.update(patient)  # Patient controls who else can see this
 Python is the [dominant language](https://www.unosquare.com/blog/programming-languages-for-biotech-from-drug-discovery-ai-to-clinical-systems/) for health data science, clinical research, and ML. This SDK links those pipelines to the Solid ecosystem.
 
 
-### Solid is the bedrock of Pacific's Sovereign Graph
+### Solid is the bedrock of the gopacific sovereign graph
 
-Solid is the core of [Pacific's](https://gopacific.ai) organisational intelligence engine. When users interact in a Pacific network, Solid's disclosure mechanics ensure that sensitive data remain under their owners' control. We built this SDK to unlock the power of the Solid protocol for the Python community. 
+Solid is the core of [gopacific's](https://gopacific.ai) organisational intelligence engine. When users interact in a gopacific network, Solid's disclosure mechanics ensure that sensitive data remain under their owners' control. We built this SDK to unlock the power of the Solid protocol for the Python community. 
 
 
 ## Getting started
 
-people requires [Python](https://www.python.org/downloads/) 3.11 or higher.
+pacific-solid requires [Python](https://www.python.org/downloads/) 3.11 or higher.
 
 ```bash
 pip install pacific-solid
@@ -96,7 +97,7 @@ Open http://localhost:3000, sign up for an account, create a pod, and generate c
 
 ```python
 import asyncio
-import people as ps
+import pacific_solid as ps
 
 async def main():
     # Login once, reuse. ps = "personal store"
@@ -122,8 +123,8 @@ Authentication handles the full [Solid-OIDC](https://solidproject.org/TR/oidc) f
 ### 3. Define a model and work with data
 
 ```python
-import people as ps
-from people import SCHEMA
+import pacific_solid as ps
+from pacific_solid import SCHEMA
 
 @ps.model
 class Note:
@@ -156,7 +157,7 @@ Solid stores data as [RDF](https://www.w3.org/RDF/), a graph-based data model bu
 
 Until now, the Solid SDK ecosystem has been a [JavaScript monoculture](https://docs.inrupt.com/developer-tools/javascript/client-libraries/). Inrupt maintains production-grade JS/TS and Java SDKs. Every other language, Python included, has had either fragmented community efforts or nothing at all. Authentication alone (Solid-OIDC with DPoP) has been the barrier that kills non-JS implementations. The [Solid Community Forum](https://forum.solidproject.org/) has years of threads from Python developers who couldn't get past it.
 
-people changes that.
+pacific-solid changes that.
 
 | Python brings to Solid | Solid brings to Python |
 |----------------------|----------------------|
@@ -172,7 +173,7 @@ people changes that.
 ### Three concepts
 
 ```python
-import people as ps          # ps = "personal store"
+import pacific_solid as ps          # ps = "personal store"
 
 me = await ps.login(...)            # Session: who you are
 alice = me.pod("https://pod/alice/") # Pod: what you're looking at
@@ -253,12 +254,12 @@ Every HTTP request, DPoP proof, token refresh, and retry is logged via Python's 
 
 ```python
 import logging
-logging.getLogger("people").setLevel(logging.DEBUG)
+logging.getLogger("pacific_solid").setLevel(logging.DEBUG)
 ```
 
 ## Specifications
 
-people implements:
+pacific-solid implements:
 
 | Specification | Version | Coverage |
 |--------------|---------|----------|
@@ -272,7 +273,7 @@ ACP (Access Control Policy), Solid Notifications, and JSON-LD content negotiatio
 ## Architecture
 
 ```
-people/
+pacific_solid/
   _auth/         Session, Pod, Solid-OIDC, DPoP proof generation + verification, credentials
   _graph/        Graph, Triple, URI, Literal, dict/pandas/networkx converters
   _rdf/          Turtle parse/serialize (rdflib wrapper), N3 Patch builder, namespace constants
@@ -282,7 +283,7 @@ people/
   _http/         Authenticated httpx client, Link/WAC-Allow/ETag header parsing, error hierarchy
 ```
 
-Leading underscores = private implementation. The public API is re-exported from `__init__.py`. Users import from `people`, never from internal packages.
+Leading underscores = private implementation. The public API is re-exported from `__init__.py`. Users import from `pacific_solid`, never from internal packages.
 
 rdflib is used internally for RDF parsing and serialization but is never exposed in the public API. The abstraction layer allows the RDF backend to be swapped (e.g. to Oxigraph) without breaking changes.
 
@@ -312,7 +313,7 @@ pytest
 
 # Lint and type check
 ruff check .
-mypy people/
+mypy pacific_solid/
 ```
 
 ### Test structure
@@ -343,6 +344,6 @@ For questions about the Solid ecosystem, see the [Solid Community Forum](https:/
 
 ## License
 
-people is open source software [licensed under MIT](LICENSE).
+pacific-solid is open source software [licensed under MIT](LICENSE).
 
 Copyright 2026 Pacific.

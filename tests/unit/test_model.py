@@ -1,8 +1,8 @@
 """Tests for @ps.model decorator, ps.field(), and dirty tracking."""
 
-import people as ps
+import pacific_solid as ps
 import pytest
-from people import FOAF, RDF, SCHEMA, URI, Graph, Literal
+from pacific_solid import FOAF, RDF, SCHEMA, URI, Graph, Literal
 
 
 @ps.model
@@ -195,7 +195,7 @@ class TestGrantModel:
         assert len(grant.modes) == 1
 
     def test_grant_from_acl_graph(self):
-        from people._rdf.namespaces import ACL
+        from pacific_solid._rdf.namespaces import ACL
 
         g = Graph()
         rule = URI("http://pod/alice/.acl#rule1")
