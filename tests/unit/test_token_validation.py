@@ -143,9 +143,17 @@ class TestValidateIdToken:
     async def test_tampered_signature_rejected(self):
         private_key, jwks = _generate_issuer_keys()
         token = _sign_id_token(private_key)
-        # Tamper with the signature by changing the last character
+        # Tamper with the signature at a character in the middle of the
+        # base64url payload. Tampering the last character is flaky: base64url
+        # encodes 6 bits per char and the trailing character can represent
+        # padding bits that don't correspond to signature bytes, so a
+        # single-char change there occasionally leaves the decoded signature
+        # unchanged. Mid-string tampering always flips real signature bytes.
         parts = token.rsplit(".", 1)
-        tampered = parts[0] + "." + parts[1][:-1] + ("A" if parts[1][-1] != "A" else "B")
+        sig = parts[1]
+        mid = len(sig) // 2
+        tampered_sig = sig[:mid] + ("A" if sig[mid] != "A" else "B") + sig[mid + 1:]
+        tampered = parts[0] + "." + tampered_sig
 
         respx.get("https://issuer.example.com/.well-known/jwks.json").mock(
             return_value=httpx.Response(200, json=jwks)
