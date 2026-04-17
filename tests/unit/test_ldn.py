@@ -3,16 +3,16 @@
 import httpx
 import pytest
 import respx
-from people import URI, Graph, Literal
-from people._auth.dpop import DPoPKey
-from people._http.client import AuthenticatedClient
-from people._ldn.inbox import (
+from pacific_solid import URI, Graph, Literal
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._http.client import AuthenticatedClient
+from pacific_solid._ldn.inbox import (
     discover_inbox,
     list_notifications,
     read_notification,
     send_notification,
 )
-from people._rdf.namespaces import SCHEMA
+from pacific_solid._rdf.namespaces import SCHEMA
 
 
 def _make_client() -> AuthenticatedClient:

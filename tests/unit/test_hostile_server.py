@@ -12,17 +12,17 @@ import time
 import httpx
 import pytest
 import respx
-from people._auth.dpop import DPoPKey
-from people._graph.graph import Graph
-from people._graph.triple import URI, Literal
-from people._http.client import AuthenticatedClient
-from people._http.errors import (
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._graph.graph import Graph
+from pacific_solid._graph.triple import URI, Literal
+from pacific_solid._http.client import AuthenticatedClient
+from pacific_solid._http.errors import (
     AccessDeniedError,
     AuthenticationError,
     PreconditionFailedError,
 )
-from people._http.headers import extract_metadata, parse_wac_allow
-from people._rdf.namespaces import FOAF
+from pacific_solid._http.headers import extract_metadata, parse_wac_allow
+from pacific_solid._rdf.namespaces import FOAF
 
 # --- Fixtures ---
 
@@ -304,7 +304,7 @@ class TestAuthAttacks:
         resp = await client.request("GET", "http://pod/resource")
         assert resp.status_code == 403
 
-        from people._http.errors import raise_for_status
+        from pacific_solid._http.errors import raise_for_status
         with pytest.raises(AccessDeniedError):
             raise_for_status(resp.status_code, "http://pod/resource", resp.text)
         await client.close()
@@ -375,7 +375,7 @@ class TestConcurrencyAttacks:
         )
         client = _make_client()
 
-        from people._http.errors import raise_for_status
+        from pacific_solid._http.errors import raise_for_status
         resp = await client.request(
             "PUT", "http://pod/resource",
             content="data",

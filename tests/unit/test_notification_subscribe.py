@@ -5,9 +5,9 @@ import json
 import httpx
 import pytest
 import respx
-from people._auth.dpop import DPoPKey
-from people._http.client import AuthenticatedClient
-from people._notifications.subscription import (
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._http.client import AuthenticatedClient
+from pacific_solid._notifications.subscription import (
     InvalidSubscriptionError,
     UnsupportedChannelError,
     subscribe,

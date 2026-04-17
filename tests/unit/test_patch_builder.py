@@ -1,7 +1,7 @@
 """Tests for N3 Patch builder."""
 
-from people import URI, Literal, Triple
-from people._rdf.patch import build_n3_patch
+from pacific_solid import URI, Literal, Triple
+from pacific_solid._rdf.patch import build_n3_patch
 
 
 class TestBuildN3Patch:

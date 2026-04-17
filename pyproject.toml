@@ -47,7 +47,7 @@ Homepage = "https://github.com/Pacific-Systems-Ltd/people"
 Issues = "https://github.com/Pacific-Systems-Ltd/people/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["people", "pacific_solid"]
+packages = ["pacific_solid", "people"]
 
 # Ruff config lives in ./ruff.toml (synced from pacific-infra/workflows/ruff.toml).
 

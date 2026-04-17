@@ -1,6 +1,6 @@
 """Tests for Triple, URI, and Literal primitives."""
 
-from people import URI, Literal, Triple
+from pacific_solid import URI, Literal, Triple
 
 
 class TestURI:

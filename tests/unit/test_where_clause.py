@@ -1,8 +1,8 @@
 """Tests for N3 Patch solid:where clause support (SP-11)."""
 
 import pytest
-from people._graph.triple import URI, Literal, Triple
-from people._rdf.patch import build_n3_patch
+from pacific_solid._graph.triple import URI, Literal, Triple
+from pacific_solid._rdf.patch import build_n3_patch
 
 
 class TestWhereClause:

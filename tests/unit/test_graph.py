@@ -1,7 +1,7 @@
 """Tests for Graph — the core data primitive."""
 
 import pytest
-from people import FOAF, RDF, SCHEMA, URI, Graph, Literal, Triple
+from pacific_solid import FOAF, RDF, SCHEMA, URI, Graph, Literal, Triple
 
 
 def _alice_graph() -> Graph:

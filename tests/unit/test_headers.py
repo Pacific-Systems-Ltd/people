@@ -1,6 +1,6 @@
 """Tests for HTTP header parsing — Link, WAC-Allow, ETag."""
 
-from people._http.headers import (
+from pacific_solid._http.headers import (
     extract_metadata,
     parse_link_headers,
     parse_wac_allow,

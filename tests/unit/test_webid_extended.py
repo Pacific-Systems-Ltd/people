@@ -3,9 +3,9 @@
 import httpx
 import pytest
 import respx
-from people._auth.dpop import DPoPKey
-from people._http.client import AuthenticatedClient
-from people._identity.webid import WebIDProfile, resolve_webid
+from pacific_solid._auth.dpop import DPoPKey
+from pacific_solid._http.client import AuthenticatedClient
+from pacific_solid._identity.webid import WebIDProfile, resolve_webid
 
 
 def _make_client() -> AuthenticatedClient:

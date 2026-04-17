@@ -10,12 +10,12 @@ import uuid
 
 import jwt
 import pytest
-from people._acl.wac import evaluate_wac
-from people._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
-from people._graph.graph import Graph
-from people._graph.triple import URI, Literal
-from people._rdf.namespaces import ACL, RDF
-from people._rdf.patch import build_n3_patch
+from pacific_solid._acl.wac import evaluate_wac
+from pacific_solid._auth.dpop import DPoPKey, compute_ath, verify_dpop_proof
+from pacific_solid._graph.graph import Graph
+from pacific_solid._graph.triple import URI, Literal
+from pacific_solid._rdf.namespaces import ACL, RDF
+from pacific_solid._rdf.patch import build_n3_patch
 
 # ============================================================
 # 1. DPoP PROOF ATTACKS
@@ -366,7 +366,7 @@ class TestPatchAttacks:
 
     def test_patch_builder_escapes_quotes_in_literals(self):
         """Attacker includes quotes in literal values to break N3 syntax."""
-        from people import Triple
+        from pacific_solid import Triple
         payload = '"; <http://evil> <http://evil> "injection'
         inserts = [
             Triple(URI("http://ex/s"), URI("http://ex/p"), Literal(payload)),
@@ -379,7 +379,7 @@ class TestPatchAttacks:
 
     def test_patch_with_special_characters_in_uris(self):
         """URIs with special characters in N3 Patch."""
-        from people import Triple
+        from pacific_solid import Triple
         inserts = [
             Triple(URI("http://ex/s"), URI("http://ex/p"), URI("http://ex/o?query=1&foo=bar")),
         ]

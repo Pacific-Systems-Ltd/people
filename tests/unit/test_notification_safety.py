@@ -1,8 +1,8 @@
 """Tests for notification subscription safety (NOT-13, NOT-14)."""
 
 import pytest
-from people._http.errors import SolidError
-from people._notifications.safety import strip_excess_fields, validate_subscription_target
+from pacific_solid._http.errors import SolidError
+from pacific_solid._notifications.safety import strip_excess_fields, validate_subscription_target
 
 
 class TestValidateSubscriptionTarget:

@@ -12,11 +12,11 @@ Run:
 import uuid
 
 import httpx
-import people as ps
+import pacific_solid as ps
 import pytest
-from people import RDF, SCHEMA, URI, Graph, Literal
-from people._http.errors import SolidError
-from people._rdf.patch import build_n3_patch
+from pacific_solid import RDF, SCHEMA, URI, Graph, Literal
+from pacific_solid._http.errors import SolidError
+from pacific_solid._rdf.patch import build_n3_patch
 
 
 @pytest.fixture
@@ -218,7 +218,7 @@ class TestPatch:
 
         n3_body = build_n3_patch(inserts, deletes)
         # Send PATCH directly via the client
-        from people._http.errors import raise_for_status
+        from pacific_solid._http.errors import raise_for_status
         resp = await pod._client.request(
             "PATCH", url,
             content=n3_body,
@@ -267,7 +267,7 @@ class TestPatch:
                 "If-Match": graph.etag,
             },
         )
-        from people._http.errors import raise_for_status
+        from pacific_solid._http.errors import raise_for_status
         raise_for_status(resp.status_code, url, resp.text)
 
         # Read back and verify

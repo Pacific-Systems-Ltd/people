@@ -1,6 +1,6 @@
 """Tests for WAC origin matching (WAC-08)."""
 
-from people import ACL, FOAF, RDF, URI, Graph, evaluate_wac
+from pacific_solid import ACL, FOAF, RDF, URI, Graph, evaluate_wac
 
 
 def _make_acl_with_origin(

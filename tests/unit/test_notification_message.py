@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from people._notifications.message import parse_notification
+from pacific_solid._notifications.message import parse_notification
 
 
 class TestParseNotification:

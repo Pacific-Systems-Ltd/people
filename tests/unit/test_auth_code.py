@@ -7,8 +7,8 @@ import urllib.parse
 import httpx
 import pytest
 import respx
-from people._auth.auth_code import exchange_auth_code, generate_pkce, start_auth_flow
-from people._auth.dpop import DPoPKey
+from pacific_solid._auth.auth_code import exchange_auth_code, generate_pkce, start_auth_flow
+from pacific_solid._auth.dpop import DPoPKey
 
 
 class TestGeneratePKCE:
@@ -189,7 +189,7 @@ class TestExchangeAuthCode:
     @respx.mock
     async def test_rejects_http_token_endpoint(self):
         """OIDC-16: Token endpoint must use TLS."""
-        from people._http.errors import SolidError
+        from pacific_solid._http.errors import SolidError
         key = DPoPKey()
         with pytest.raises(SolidError, match="insecure"):
             await exchange_auth_code(

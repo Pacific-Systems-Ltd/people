@@ -1,7 +1,7 @@
 """Tests for JSON-LD parsing and content-type dispatching (SP-16)."""
 
-from people._graph.triple import URI
-from people._rdf.parse import parse_jsonld, parse_rdf
+from pacific_solid._graph.triple import URI
+from pacific_solid._rdf.parse import parse_jsonld, parse_rdf
 
 
 class TestParseJsonLD:

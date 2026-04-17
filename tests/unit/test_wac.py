@@ -1,7 +1,7 @@
 """Tests for WAC evaluation — server-side building block."""
 
-from people import URI, Graph, evaluate_wac
-from people._rdf.namespaces import ACL, FOAF, RDF
+from pacific_solid import URI, Graph, evaluate_wac
+from pacific_solid._rdf.namespaces import ACL, FOAF, RDF
 
 
 def _make_acl(
