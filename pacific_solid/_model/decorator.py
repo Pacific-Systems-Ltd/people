@@ -99,7 +99,12 @@ def model(cls: type[_T]) -> type[_T]:
     @property  # type: ignore[misc]
     def graph_property(self: Any) -> Graph:
         """Build a Graph from the current field values."""
-        subject = URI(self._ps_subject or f"_:new-{id(self)}")
+        # Default subject is the empty IRI reference `<>`, which Turtle
+        # resolves against the document's base IRI at parse time. This
+        # produces self-identifying documents: when Solid assigns a URL
+        # to a POSTed resource, reading it back with base_uri=<url>
+        # resolves `<>` to the absolute resource URI.
+        subject = URI(self._ps_subject if self._ps_subject is not None else "")
 
         g = Graph()
         g.add(subject, URI(str(RDF.type)), URI(rdf_type_uri))

@@ -73,6 +73,30 @@ class TestModelToGraph:
         tag_triples = g.query(predicate=URI(str(SCHEMA.keywords)))
         assert len(tag_triples) == 0
 
+    def test_default_subject_is_empty_iri(self):
+        """A new model with no explicit subject uses `<>`, not a blank node.
+
+        The empty IRI reference resolves against the document's base IRI
+        when the serialised Turtle is parsed, producing a self-identifying
+        document at its eventual URL.
+        """
+        note = Note(title="Hello")
+        subjects = {t.subject for t in note.graph.triples}
+        assert subjects == {URI("")}
+
+    def test_default_subject_serialises_as_empty_iri(self):
+        """The serialised Turtle uses `<>` for the default subject."""
+        note = Note(title="Hello")
+        turtle = note.graph.to_turtle()
+        assert "<>" in turtle
+
+    def test_explicit_subject_overrides_default(self):
+        """Setting _ps_subject before reading .graph uses that URI."""
+        note = Note(title="Hello")
+        note._ps_subject = "http://pod.example/notes/1"
+        subjects = {t.subject for t in note.graph.triples}
+        assert subjects == {URI("http://pod.example/notes/1")}
+
 
 class TestModelFromGraph:
     def _make_note_graph(self) -> Graph:
