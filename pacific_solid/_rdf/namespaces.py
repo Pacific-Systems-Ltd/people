@@ -39,6 +39,7 @@ XSD = Namespace("http://www.w3.org/2001/XMLSchema#")
 OWL = Namespace("http://www.w3.org/2002/07/owl#")
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 SOLID = Namespace("http://www.w3.org/ns/solid/terms#")
+SOLID_NOTIFICATIONS = Namespace("http://www.w3.org/ns/solid/notifications#")
 ACL = Namespace("http://www.w3.org/ns/auth/acl#")
 PIM = Namespace("http://www.w3.org/ns/pim/space#")
 

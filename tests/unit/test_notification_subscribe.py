@@ -23,6 +23,7 @@ def _make_client() -> AuthenticatedClient:
 
 
 _WS_CHANNEL = "http://www.w3.org/ns/solid/notifications#WebSocketChannel2023"
+_WEBHOOK_CHANNEL = "http://www.w3.org/ns/solid/notifications#WebhookChannel2023"
 
 
 class TestSubscribe:
@@ -97,6 +98,63 @@ class TestSubscribe:
         assert sent_body["type"] == _WS_CHANNEL
         assert sent_body["topic"] == "https://pod.example.com/resource"
         assert "@context" in sent_body
+
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_send_to_included_in_webhook_subscription_body(self):
+        """WebhookChannel2023: sendTo must appear in the POST body."""
+        respx.post("https://pod.example.com/subscription").mock(
+            return_value=httpx.Response(
+                200,
+                text=json.dumps({
+                    "id": "https://pod.example.com/channels/hook-abc",
+                    "type": _WEBHOOK_CHANNEL,
+                    "topic": "https://pod.example.com/resource",
+                    "sendTo": "https://my-server.example/hook",
+                }),
+            )
+        )
+        client = _make_client()
+        result = await subscribe(
+            "https://pod.example.com/subscription",
+            "https://pod.example.com/resource",
+            _WEBHOOK_CHANNEL,
+            client,
+            features={"sendTo": "https://my-server.example/hook"},
+        )
+        await client.close()
+
+        sent_body = json.loads(respx.calls[0].request.content)
+        assert sent_body["sendTo"] == "https://my-server.example/hook"
+        assert sent_body["type"] == _WEBHOOK_CHANNEL
+        assert result.send_to == "https://my-server.example/hook"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_send_to_not_stripped_by_subscription(self):
+        """Regression guard: features dict must NOT be stripped before sending."""
+        respx.post("https://pod.example.com/subscription").mock(
+            return_value=httpx.Response(
+                200,
+                text=json.dumps({"id": "ch", "sendTo": "https://my-server.example/hook"}),
+            )
+        )
+        client = _make_client()
+        await subscribe(
+            "https://pod.example.com/subscription",
+            "https://pod.example.com/resource",
+            _WEBHOOK_CHANNEL,
+            client,
+            features={"sendTo": "https://my-server.example/hook"},
+        )
+        await client.close()
+
+        sent_body = json.loads(respx.calls[0].request.content)
+        assert "sendTo" in sent_body, (
+            "sendTo was stripped from the subscription body — "
+            "check that strip_excess_fields() is not called in subscribe()"
+        )
 
 
 class TestSubscriptionErrors:

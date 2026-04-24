@@ -1,8 +1,8 @@
-"""Tests for notification subscription safety (NOT-13, NOT-14)."""
+"""Tests for notification subscription safety (NOT-13)."""
 
 import pytest
 from pacific_solid._http.errors import SolidError
-from pacific_solid._notifications.safety import strip_excess_fields, validate_subscription_target
+from pacific_solid._notifications.safety import validate_subscription_target
 
 
 class TestValidateSubscriptionTarget:
@@ -46,30 +46,3 @@ class TestValidateSubscriptionTarget:
     def test_non_private_172_accepted(self):
         """172.32.x is NOT private range."""
         validate_subscription_target("https://172.32.0.1/subscription")
-
-
-class TestStripExcessFields:
-    """NOT-14: Minimise information in subscription requests."""
-
-    def test_keeps_required_fields(self):
-        payload = {
-            "@context": ["https://www.w3.org/ns/solid/notification/v1"],
-            "type": "WebSocketChannel2023",
-            "topic": "https://pod.example.com/resource",
-        }
-        result = strip_excess_fields(payload)
-        assert result == payload
-
-    def test_removes_extra_fields(self):
-        payload = {
-            "@context": ["https://www.w3.org/ns/solid/notification/v1"],
-            "type": "WebSocketChannel2023",
-            "topic": "https://pod.example.com/resource",
-            "userAgent": "MyApp/1.0",
-            "browsing_history": ["https://example.com"],
-        }
-        result = strip_excess_fields(payload)
-        assert "userAgent" not in result
-        assert "browsing_history" not in result
-        assert result["type"] == "WebSocketChannel2023"
-        assert result["topic"] == "https://pod.example.com/resource"
