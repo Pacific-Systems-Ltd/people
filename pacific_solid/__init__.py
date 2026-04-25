@@ -66,6 +66,7 @@ from pacific_solid._notifications.subscription import (
     UnsupportedChannelError,
     subscribe,
 )
+from pacific_solid._notifications.webhook import WebhookHandler, WebhookReceiver
 from pacific_solid._notifications.websocket import NotificationStream
 
 # Namespaces
@@ -80,6 +81,7 @@ from pacific_solid._rdf.namespaces import (
     RDFS,
     SCHEMA,
     SOLID,
+    SOLID_NOTIFICATIONS,
     VCARD,
     XSD,
     Namespace,
@@ -156,7 +158,7 @@ __all__ = [
     "Read", "Write", "Append", "Control",
     # Namespaces
     "Namespace",
-    "RDF", "RDFS", "XSD", "OWL", "LDP", "SOLID", "ACL", "PIM",
+    "RDF", "RDFS", "XSD", "OWL", "LDP", "SOLID", "SOLID_NOTIFICATIONS", "ACL", "PIM",
     "FOAF", "SCHEMA", "DCTERMS", "VCARD",
     # Errors
     "SolidError", "AuthenticationError", "AccessDeniedError",
@@ -169,6 +171,7 @@ __all__ = [
     # Notifications
     "discover_channels", "subscribe", "ChannelInfo", "SubscriptionResult",
     "Notification", "parse_notification", "NotificationStream",
+    "WebhookHandler", "WebhookReceiver",
     "UnsupportedChannelError", "InvalidSubscriptionError",
     # Server building blocks
     "verify_dpop", "compute_ath", "apply_patch", "build_n3_patch",
