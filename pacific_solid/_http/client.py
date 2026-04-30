@@ -33,11 +33,16 @@ class AuthenticatedClient:
         access_token: str,
         token_expires_at: float,
         refresh_callback: Any = None,
+        canonical_base: str | None = None,
     ) -> None:
         self._dpop_key = dpop_key
         self._access_token = access_token
         self._token_expires_at = token_expires_at
         self._refresh_callback = refresh_callback
+        # When set, DPoP htu uses this origin instead of the connection URL.
+        # Allows routing requests via an internal alias (e.g. *.flycast) while
+        # CSS validates htu against its public base URL.
+        self._canonical_base = canonical_base
         self._dpop_nonce: str | None = None
         self._lock = asyncio.Lock()
         self._client = httpx.AsyncClient()
@@ -78,10 +83,18 @@ class AuthenticatedClient:
                         self._access_token = token_data["access_token"]
                         self._token_expires_at = time.time() + token_data.get("expires_in", 600)
 
-            # Build DPoP proof
+            # Build DPoP proof — htu must match CSS's configured base URL.
+            # If canonical_base is set, rewrite the origin for htu while the
+            # actual TCP connection still goes to the internal alias URL.
             ath = compute_ath(self._access_token)
+            if self._canonical_base:
+                _conn = httpx.URL(url)
+                _base = httpx.URL(self._canonical_base)
+                htu_url = str(_conn.copy_with(scheme=_base.scheme, host=_base.host, port=_base.port))
+            else:
+                htu_url = url
             dpop_proof = self._dpop_key.sign_proof(
-                method, url, nonce=self._dpop_nonce, ath=ath
+                method, htu_url, nonce=self._dpop_nonce, ath=ath
             )
 
             # Build request headers

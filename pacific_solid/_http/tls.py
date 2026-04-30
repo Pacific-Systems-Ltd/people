@@ -25,7 +25,9 @@ def enforce_tls(url: str) -> None:
         return
     hostname = parsed.hostname or ""
     if parsed.scheme == "http" and (
-        hostname in _LOCALHOST_HOSTS or hostname.endswith(".internal")
+        hostname in _LOCALHOST_HOSTS
+        or hostname.endswith(".internal")
+        or hostname.endswith(".flycast")  # Fly.io private network — WireGuard-encrypted
     ):
         return
     raise SolidError(

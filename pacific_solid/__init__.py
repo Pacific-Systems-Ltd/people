@@ -96,7 +96,12 @@ Control = ACL.Control
 
 
 async def login(
-    issuer: str, client_id: str, client_secret: str, *, discovery_url: str = ""
+    issuer: str,
+    client_id: str,
+    client_secret: str,
+    *,
+    discovery_url: str = "",
+    canonical_base: str | None = None,
 ) -> "SolidSession":
     """Authenticate with a Solid OIDC issuer. Returns a SolidSession.
 
@@ -105,6 +110,8 @@ async def login(
         client_id: The client ID
         client_secret: The client secret
         discovery_url: HTTP endpoint for OIDC discovery. Defaults to issuer.
+        canonical_base: Public base URL for DPoP htu when routing via an
+            internal alias. See SolidSession.login() for full docs.
 
     Usage:
         me = await ps.login("http://localhost:3000", "my-id", "my-secret")
@@ -112,7 +119,11 @@ async def login(
         graph = await alice.read("notes/hello")
     """
     from pacific_solid._auth.session import SolidSession
-    return await SolidSession.login(issuer, client_id, client_secret, discovery_url=discovery_url)
+    return await SolidSession.login(
+        issuer, client_id, client_secret,
+        discovery_url=discovery_url,
+        canonical_base=canonical_base,
+    )
 
 
 async def login_interactive(
