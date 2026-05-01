@@ -119,7 +119,7 @@ class TestWebSocketChannel:
             graph = await pod.read(notify_resource)
             graph.take_snapshot()
             graph.add(
-                URI(f"http://example.org/notif-subject"),
+                URI("http://example.org/notif-subject"),
                 SCHEMA.text,
                 Literal("Triggering notification"),
             )

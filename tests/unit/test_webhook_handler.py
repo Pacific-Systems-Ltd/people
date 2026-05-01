@@ -5,7 +5,6 @@ import json
 import pytest
 from pacific_solid._notifications.webhook import WebhookHandler
 
-
 _VALID_NOTIFICATION = {
     "@context": ["https://www.w3.org/ns/solid/notification/v1"],
     "id": "https://pod.example.com/notifications/n1",
