@@ -1,25 +1,17 @@
-"""Subscription safety checks (NOT-13, NOT-14).
+"""Subscription safety checks (NOT-13).
 
 NOT-13: Clients SHOULD NOT send subscription requests to untrusted services,
         including localhost or loopback addresses.
-NOT-14: Clients SHOULD minimise information exposure in subscription requests.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
 from urllib.parse import urlparse
 
 from pacific_solid._http.errors import SolidError
 
 logger = logging.getLogger("people")
-
-_PRIVATE_RANGES = [
-    ("10.", "10."),
-    ("172.16.", "172.31."),
-    ("192.168.", "192.168."),
-]
 
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1"}
 
@@ -84,12 +76,3 @@ def _is_private_ip(hostname: str) -> bool:
     return False
 
 
-def strip_excess_fields(payload: dict[str, Any]) -> dict[str, Any]:
-    """Remove non-essential fields from a subscription request (NOT-14).
-
-    Keeps only the fields required by the Notification Channel Data Model:
-    @context, type, and topic. Removes any extra information that could
-    be used to track the subscriber.
-    """
-    required_keys = {"@context", "type", "topic"}
-    return {k: v for k, v in payload.items() if k in required_keys}

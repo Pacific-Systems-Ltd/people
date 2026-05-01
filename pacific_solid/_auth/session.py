@@ -54,6 +54,7 @@ class SolidSession:
         client_secret: str,
         *,
         discovery_url: str = "",
+        canonical_base: str | None = None,
     ) -> SolidSession:
         """Authenticate with a Solid OIDC issuer using client credentials.
 
@@ -64,6 +65,10 @@ class SolidSession:
             discovery_url: HTTP endpoint for OIDC discovery. Defaults to issuer.
                 Use when the issuer (stored in credentials) differs from the
                 reachable HTTP address (e.g. after migrating to a new hostname).
+            canonical_base: Public base URL of the server, used as DPoP htu origin
+                when routing requests via an internal alias (e.g. *.flycast). The
+                actual connection uses issuer/discovery_url; DPoP proofs reference
+                this URL so the server's htu validation passes.
 
         Returns:
             An authenticated SolidSession.
@@ -98,6 +103,7 @@ class SolidSession:
             access_token=token_data["access_token"],
             token_expires_at=time.time() + expires_in,
             refresh_callback=_refresh,
+            canonical_base=canonical_base,
         )
 
         # Validate ID Token if present (OIDC-09)

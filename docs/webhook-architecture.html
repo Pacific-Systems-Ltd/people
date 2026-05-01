@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pacific-solid · Webhook Notification Architecture</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --border:    #2d3148;
+    --accent:    #5b7cf6;
+    --green:     #3ecf8e;
+    --amber:     #f6c549;
+    --red:       #f66b5b;
+    --purple:    #a78bfa;
+    --muted:     #8b93b0;
+    --text:      #e2e8f0;
+    --text-dim:  #b0bcd4;
+    --mono:      'JetBrains Mono', 'Fira Code', monospace;
+    --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 48px 32px 80px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 48px;
+  }
+
+  /* ── section label ── */
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── phase row ── */
+  .phase-row {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 8px;
+    align-items: start;
+  }
+
+  .phase-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .phase-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .phase-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* ── block ── */
+  .block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    position: relative;
+  }
+
+  .block.accent  { border-color: var(--accent);  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .block.green   { border-color: var(--green);   box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 20%, transparent); }
+  .block.amber   { border-color: var(--amber);   box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 20%, transparent); }
+  .block.purple  { border-color: var(--purple);  box-shadow: 0 0 0 1px color-mix(in srgb, var(--purple) 20%, transparent); }
+  .block.red     { border-color: var(--red);     box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 20%, transparent); }
+  .block.external { border-style: dashed; border-color: #3d4265; }
+
+  .block-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot.accent { background: var(--accent); }
+  .dot.green  { background: var(--green); }
+  .dot.amber  { background: var(--amber); }
+  .dot.purple { background: var(--purple); }
+  .dot.red    { background: var(--red); }
+  .dot.muted  { background: var(--muted); }
+
+  .block-body {
+    font-size: 0.73rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    background: #12141d;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  code.green  { color: var(--green); }
+  code.amber  { color: var(--amber); }
+  code.purple { color: var(--purple); }
+  code.muted  { color: var(--muted); }
+
+  /* ── badge ── */
+  .badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .badge.spec    { background: #1e2340; color: var(--muted); }
+  .badge.opt     { background: #1e2730; color: var(--green); border: 1px solid #2d4535; }
+  .badge.ext     { background: #2a1e35; color: var(--purple); border: 1px solid #4a3060; }
+
+  /* ── arrow connector ── */
+  .connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 4px 0;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .connector .line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  .connector .arrow { font-size: 0.9rem; }
+
+  /* ── flow divider ── */
+  .flow-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0 20px;
+  }
+
+  .flow-divider .line { flex: 1; height: 1px; background: var(--border); }
+
+  .flow-divider span {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── HTTP pill ── */
+  .http {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+  }
+
+  .http.post { background: #2a1e18; color: #f6a049; border: 1px solid #4a3020; }
+  .http.get  { background: #1a2830; color: #49b6f6; border: 1px solid #2040a0; }
+  .http.head { background: #1e2530; color: #8b9fc0; border: 1px solid #304060; }
+  .http.ws   { background: #1e2a1e; color: var(--green); border: 1px solid #305040; }
+
+  /* ── sub-items ── */
+  ul.items {
+    list-style: none;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  ul.items li {
+    font-size: 0.71rem;
+    color: var(--text-dim);
+    padding-left: 12px;
+    position: relative;
+  }
+
+  ul.items li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--border);
+  }
+
+  /* ── large arrow between phases ── */
+  .phase-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 0;
+    color: var(--border);
+    font-size: 1.2rem;
+  }
+
+  /* ── two-path split ── */
+  .split-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    position: relative;
+  }
+
+  .split-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+  }
+
+  .path-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .path-label.webhook { color: var(--amber); }
+  .path-label.websocket { color: var(--green); }
+
+  /* ── shared block ── */
+  .shared-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  /* ── notification output ── */
+  .output-block {
+    background: linear-gradient(135deg, #1a2035, #1a2520);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-top: 16px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .field {
+    background: #0f1117;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.69rem;
+  }
+
+  .field-name {
+    font-family: var(--mono);
+    color: var(--green);
+    margin-bottom: 2px;
+  }
+
+  .field-type {
+    color: var(--muted);
+    font-size: 0.62rem;
+  }
+
+  /* ── safety note ── */
+  .safety-note {
+    background: #1e1820;
+    border: 1px solid #3d2840;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .safety-note .icon { color: var(--red); font-size: 0.85rem; flex-shrink: 0; }
+
+  /* ── namespace box ── */
+  .ns-box {
+    background: #12101a;
+    border: 1px solid #30244a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+
+  /* ── legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<h1>pacific-solid · Notification Architecture</h1>
+<p class="subtitle">Solid Notifications Protocol — WebhookChannel2023 &amp; WebSocketChannel2023</p>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 1 — DISCOVERY
+════════════════════════════════════════════════════════════════ -->
+<div class="flow-divider"><div class="line"></div><span>Phase 1 · Discovery <span class="badge spec">NOT-01</span></span><div class="line"></div></div>
+
+<div class="phase-row cols-3">
+
+  <div class="block external">
+    <div class="block-title"><span class="dot muted"></span>Application</div>
+    <div class="block-body">
+      Calls <code>discover_channels(resource_url, client)</code>
+    </div>
+  </div>
+
+  <div class="block accent">
+    <div class="block-title"><span class="dot accent"></span>discover_channels()</div>
+    <div class="block-body">
+      <span class="http head">HEAD</span><code class="muted">{resource_url}</code><br>
+      &nbsp;↳ parse <code class="muted">Link</code> header → <code>describedby</code> / <code>storageDescription</code><br><br>
+      <span class="http get">GET</span><code class="muted">{description_url}</code><br>
+      &nbsp;↳ parse JSON-LD subscription graph
+    </div>
+  </div>
+
+  <div class="block external">
+    <div class="block-title"><span class="dot muted"></span>Solid Server</div>
+    <div class="block-body">
+      Exposes Link headers on resources.<br>
+      Description doc lists subscription services &amp; channel types.
+    </div>
+  </div>
+
+</div>
+
+<div class="connector">
+  <div class="line"></div>
+  <span class="arrow">↓</span>
+  <span>returns <code>list[ChannelInfo]</code> — each with <code>subscription_url</code>, <code>channel_type</code>, <code>features</code></span>
+  <div class="line"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 2 — SUBSCRIPTION
+════════════════════════════════════════════════════════════════ -->
+<div class="flow-divider"><div class="line"></div><span>Phase 2 · Subscription <span class="badge spec">NOT-03</span></span><div class="line"></div></div>
+
+<div class="phase-row cols-3">
+
+  <div class="block amber">
+    <div class="block-title"><span class="dot amber"></span>WebhookReceiver <span class="badge opt">webhook extra</span></div>
+    <div class="block-body">
+      Started before subscribing to obtain <code>receiver.url</code> → passed as <code>sendTo</code> feature.
+      <ul class="items">
+        <li>Binds <code>aiohttp</code> server on configured port</li>
+        <li><code>public_url</code> override for reverse proxies</li>
+        <li>Exposes <code>receiver.url</code> → <code>sendTo</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block accent">
+    <div class="block-title"><span class="dot accent"></span>subscribe()</div>
+    <div class="block-body">
+      <span class="http post">POST</span><code class="muted">{subscription_url}</code><br>
+      &nbsp;↳ <code class="muted">Content-Type: application/ld+json</code><br>
+      &nbsp;↳ <code class="muted">Authorization: DPoP {token}</code><br><br>
+      Body includes:<br>
+      &nbsp;• <code>type</code> — channel type URI<br>
+      &nbsp;• <code>topic</code> — resource URL<br>
+      &nbsp;• <code>sendTo</code> — webhook URL <em>(webhook path)</em>
+    </div>
+  </div>
+
+  <div class="block external">
+    <div class="block-title"><span class="dot muted"></span>Solid Server</div>
+    <div class="block-body">
+      Responds with <code>200 OK</code> and JSON-LD confirming channel.<br><br>
+      Error cases:<br>
+      &nbsp;• <code>415</code> → UnsupportedChannelError<br>
+      &nbsp;• <code>422</code> → InvalidSubscriptionError
+    </div>
+  </div>
+
+</div>
+
+<div class="safety-note">
+  <span class="icon">⚠</span>
+  <span><strong>Safety check (NOT-13) —</strong> <code>validate_subscription_target(url)</code> is called before POSTing. Rejects <code>localhost</code>, loopback (<code>127.x</code>), and RFC-1918 private addresses to block SSRF attacks.</span>
+</div>
+
+<div class="connector" style="margin-top:12px">
+  <div class="line"></div>
+  <span class="arrow">↓</span>
+  <span>returns <code>SubscriptionResult</code> — <code>channel_url</code>, <code>send_to</code> / <code>receive_from</code>, <code>topic</code></span>
+  <div class="line"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 3 — RECEPTION (two paths)
+════════════════════════════════════════════════════════════════ -->
+<div class="flow-divider"><div class="line"></div><span>Phase 3 · Reception</span><div class="line"></div></div>
+
+<div class="split-wrapper">
+
+  <!-- WEBHOOK PATH -->
+  <div>
+    <div class="path-label webhook">Path A — WebhookChannel2023</div>
+
+    <div class="block external" style="margin-bottom:10px">
+      <div class="block-title"><span class="dot muted"></span>Solid Server</div>
+      <div class="block-body">
+        Detects resource change → sends<br>
+        <span class="http post">POST</span> <code class="muted">{sendTo}</code><br>
+        <code class="muted">Content-Type: application/ld+json</code>
+      </div>
+    </div>
+
+    <div class="phase-arrow">↓</div>
+
+    <div class="block amber">
+      <div class="block-title"><span class="dot amber"></span>WebhookReceiver._handle_post()</div>
+      <div class="block-body">
+        <code>aiohttp</code> handler receives POST.<br>
+        Delegates to <code>WebhookHandler.process(body, content_type)</code>.<br>
+        Enqueues result → <code>asyncio.Queue</code>.<br>
+        Returns <code>200 OK</code>.
+      </div>
+    </div>
+
+    <div class="phase-arrow">↓</div>
+
+    <div class="block amber" style="border-style: dashed">
+      <div class="block-title"><span class="dot amber"></span>WebhookHandler</div>
+      <div class="block-body">
+        Stateless, framework-agnostic.<br>
+        Validates <code>Content-Type: application/ld+json</code>.<br>
+        Decodes UTF-8 body → <code>parse_notification()</code>.<br><br>
+        <em>Can be mounted in FastAPI / Flask independently.</em>
+      </div>
+    </div>
+
+    <div class="phase-arrow">↓</div>
+
+    <div class="block external">
+      <div class="block-title"><span class="dot muted"></span>Application</div>
+      <div class="block-body"><code>async for notification in receiver:</code></div>
+    </div>
+  </div>
+
+  <!-- WEBSOCKET PATH -->
+  <div>
+    <div class="path-label websocket">Path B — WebSocketChannel2023</div>
+
+    <div class="block external" style="margin-bottom:10px">
+      <div class="block-title"><span class="dot muted"></span>Solid Server</div>
+      <div class="block-body">
+        Streams JSON-LD messages over<br>
+        <span class="http ws">WS</span> <code class="muted">{receive_from}</code>
+      </div>
+    </div>
+
+    <div class="phase-arrow">↓</div>
+
+    <div class="block green">
+      <div class="block-title"><span class="dot green"></span>NotificationStream <span class="badge opt">websocket extra</span></div>
+      <div class="block-body">
+        Connects via <code>websockets</code> library.<br>
+        Reads messages with <code>ws.recv()</code>.<br>
+        Passes each to <code>parse_notification()</code>.<br><br>
+        Async context manager + iterator.
+      </div>
+    </div>
+
+    <div class="phase-arrow" style="visibility:hidden">↓</div>
+    <div class="block" style="border:none;background:none;padding:0;min-height:60px"></div>
+    <div class="phase-arrow">↓</div>
+
+    <div class="block external">
+      <div class="block-title"><span class="dot muted"></span>Application</div>
+      <div class="block-body"><code>async for notification in stream:</code></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     NOTIFICATION OUTPUT
+════════════════════════════════════════════════════════════════ -->
+<div class="output-block">
+  <div class="block-title" style="font-size:0.8rem"><span class="dot green"></span>Notification dataclass — parsed output from both paths</div>
+  <div class="field-grid">
+    <div class="field"><div class="field-name">id</div><div class="field-type">str — notification IRI</div></div>
+    <div class="field"><div class="field-name">activity_type</div><div class="field-type">list[str] — AS2 types</div></div>
+    <div class="field"><div class="field-name">object_url</div><div class="field-type">str — resource IRI</div></div>
+    <div class="field"><div class="field-name">published</div><div class="field-type">str | None — ISO 8601</div></div>
+    <div class="field"><div class="field-name">target</div><div class="field-type">list[str] — target IRIs</div></div>
+    <div class="field"><div class="field-name">state</div><div class="field-type">str | None</div></div>
+    <div class="field"><div class="field-name">actor</div><div class="field-type">str | None</div></div>
+    <div class="field"><div class="field-name">raw</div><div class="field-type">dict — full JSON-LD</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SHARED INFRASTRUCTURE
+════════════════════════════════════════════════════════════════ -->
+<div class="flow-divider" style="margin-top:32px"><div class="line"></div><span>Shared Infrastructure</span><div class="line"></div></div>
+
+<div class="shared-row">
+
+  <div class="block accent">
+    <div class="block-title"><span class="dot accent"></span>AuthenticatedClient</div>
+    <div class="block-body">
+      Shared by <code>discover_channels()</code> and <code>subscribe()</code>.
+      <ul class="items" style="margin-top:8px">
+        <li>DPoP proof generation per request</li>
+        <li>Bearer token attach &amp; refresh</li>
+        <li>Thin wrapper over <code>httpx</code></li>
+        <li>TLS / mTLS configuration</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block purple">
+    <div class="block-title"><span class="dot purple"></span>SOLID_NOTIFICATIONS</div>
+    <div class="block-body">
+      RDFLib <code>Namespace</code> object.
+      <div class="ns-box" style="margin-top:8px">
+        http://www.w3.org/ns/solid/<br>notifications#<br><br>
+        .WebhookChannel2023<br>
+        .WebSocketChannel2023
+      </div>
+    </div>
+  </div>
+
+  <div class="block" style="border-color:#2d3148">
+    <div class="block-title"><span class="dot muted"></span>parse_notification()</div>
+    <div class="block-body">
+      Shared by both paths.<br>
+      Handles JSON-LD variants:<br>
+      <ul class="items" style="margin-top:6px">
+        <li><code>id</code> / <code>@id</code></li>
+        <li><code>type</code> / <code>@type</code></li>
+        <li>string / list / dict values</li>
+        <li>Preserves <code>raw</code> for extensions</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LEGEND
+════════════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--accent)"></div>
+    Core SDK — always available
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--amber)"></div>
+    Webhook path — <code>[webhook]</code> extra
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--green)"></div>
+    WebSocket path — <code>[websocket]</code> extra
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--purple)"></div>
+    RDF / vocabulary
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#3d4265; border: 1px dashed #5d6285"></div>
+    External (Solid Server / Application)
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#1e2340"></div>
+    <span class="badge spec" style="margin-left:0">NOT-xx</span>&nbsp;Solid Notifications Protocol spec reference
+  </div>
+</div>
+
+</body>
+</html>

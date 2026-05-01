@@ -32,7 +32,8 @@ dependencies = [
 [project.optional-dependencies]
 pandas = ["pandas>=2.0"]
 science = ["networkx>=3.0"]
-all = ["pacific-solid[pandas,science]"]
+webhook = ["aiohttp>=3.9"]
+all = ["pacific-solid[pandas,science,webhook]"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
